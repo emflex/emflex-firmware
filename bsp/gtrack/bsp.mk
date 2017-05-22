@@ -10,6 +10,5 @@ SRC:= drivers/i2c_api.c \
       drivers/network/gsm_api.c \
       drivers/network/gsm_ll.c \
       drivers/utils.c \
-      drivers/ext_api.c
 
 CSRC+=$(patsubst %.c, %.o, $(SRC))

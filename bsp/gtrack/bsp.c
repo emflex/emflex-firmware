@@ -23,7 +23,8 @@
 
 #include "common.h"
 #include "bsp.h"
-#include "logging.h"
+
+#define BSP_PWR_OFF_CHANNEL GPIOB_PIN12
 
 void bspGsmPowerOnOff(void)
 {
@@ -62,8 +63,6 @@ static void bspPwrOff(void *arg) {
 
   if (palReadPad(GPIOB, BSP_PWR_OF_BUT))
   {
-      LOG_TRACE(BSP, "Powering off the device");
-
       /* switch off GSM module */
       /* pull down PWRKEY pin in GSM module */
       palSetPad(GPIOC, BSP_GSM_PWR_PIN);
@@ -80,20 +79,55 @@ static void bspPwrOff(void *arg) {
   }
 }
 
-RV_t bspPwrOffCb(void)
+static void bspExtcb1(EXTDriver *extp, expchannel_t channel)
 {
-  virtual_timer_t vt4;
+  (void)extp;
+  (void)channel;
 
-  LOG_TRACE(BSP, "Received power off request");
+  static virtual_timer_t vt4;
 
-  chVTSet(&vt4, S2ST(5), bspPwrOff, NULL);
+  chSysLockFromISR();
 
-  return RV_SUCCESS;
+  chVTSetI(&vt4, S2ST(5), bspPwrOff, NULL);
+
+  chSysUnlockFromISR();
+
+  return;
 }
+
+/* External interrupt/event controller (EXTI) config.
+   Each line corresponds to separate channel of EXTI */
+static const EXTConfig bspPwrCfg = {
+  {
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_RISING_EDGE | EXT_MODE_GPIOB, bspExtcb1}, /* power on/off button is connected here */
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL}
+  }
+};
 
 RV_t bspInit(void)
 {
-  /* Indicate that device initialization has started */
+  /* Device initialization has started */
   palSetPad(GPIOC, 6);
 
   /* Activates the UART driver for debugging,
@@ -105,6 +139,9 @@ RV_t bspInit(void)
    * PA2 and PA3 are routed to USART2. */
   palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
   palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
+
+  /* start EXTI driver that handles power off event */
+  extStart(&EXTD1, &bspPwrCfg);
 
   /* set IO pin responsible for switching DC-DC converter */
   bspSystemPowerOn();
@@ -157,8 +194,11 @@ static RV_t bspStartTimer3Sec(void)
 
 RV_t bspInitComplete(void)
 {
-    /* Indicate that device initialization completed successfully */
+    /* Device initialization completed successfully */
     palClearPad(GPIOC, 6);
+
+    /* enable processing power on/off button event */
+    extChannelEnable(&EXTD1, BSP_PWR_OFF_CHANNEL);
 
     /* Display normal device activity.
      * Blink status LED each 10 sec */
