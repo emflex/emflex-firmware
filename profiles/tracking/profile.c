@@ -245,12 +245,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       break;
 
     case ALARM_EVENT:
-      LOG_TRACE(CONTROL_CMP, "ALARM event!");
-
-      /*if (RV_SUCCESS != gsmSmsSend("ALARM"))
-      {
-        LOG_TRACE(CONTROL_CMP,"Sms msg send failed!");
-      }*/
+      //LOG_TRACE(CONTROL_CMP, "ALARM event!");
 
       break;
 
