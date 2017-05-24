@@ -31,7 +31,6 @@
 #include "accelGyro.h"
 #include "utils.h"
 #include "logging.h"
-#include "ext_api.h"
 
 const uint8_t gImuThresholdInDegrees = 1.0;
 
@@ -246,12 +245,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       break;
 
     case ALARM_EVENT:
-      LOG_TRACE(CONTROL_CMP, "ALARM event!");
-
-      /*if (RV_SUCCESS != gsmSmsSend("ALARM"))
-      {
-        LOG_TRACE(CONTROL_CMP,"Sms msg send failed!");
-      }*/
+      //LOG_TRACE(CONTROL_CMP, "ALARM event!");
 
       break;
 
@@ -437,11 +431,8 @@ void profileInit(void)
 
   imuRegisterEventCb(IMU_EVENT_ALARM, ctrlImuEventAlarmProcess);
 
-  extAppCbRegister(BSP_PWR_OFF_CHANNEL, EXT_CH_MODE_RISING_EDGE | EXT_MODE_GPIOB, bspPwrOffCb);
-
   cnfgrRegister("Control",      ctrlAppInit);
   cnfgrRegister("GSM",          gsmInit);  
   cnfgrRegister("IMU",          accelGyroInit);
-  cnfgrRegister("Ext",          extAppInit);
   cnfgrRegister("BSP_INIT_FIN", bspInitComplete);
 }

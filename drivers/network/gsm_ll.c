@@ -117,7 +117,6 @@ RV_t gsmCmpCommand(const char *inBuf, const char *cmpBuf)
   }
   else
   {
-    LOG_ERROR(GSM_CMP, "Failed to find GSM commands");
     return RV_FAILURE;
   }
 }
@@ -700,13 +699,14 @@ static THD_FUNCTION(gsmTask, arg)
   RV_t rv = RV_FAILURE;
   uint32_t currTime = 0;
   int32_t time = -15;
-  char gsmCurrCmd[32] = {0};
+  char gsmCurrCmd[64] = {0};
 
   while (1)
   {
     /*Decrease the read speed from UART*/
     chThdSleepMilliseconds(200);
 
+    /* TODO: add support to re-send complex commands, like sending SMS */
     if (gGsmLastCmdResend)
     {
       LOG_ERROR(GSM_CMP, "GSM response timeout. Re-sending command:%s", gsmCurrCmd);
@@ -718,8 +718,6 @@ static THD_FUNCTION(gsmTask, arg)
 
       /* Reset GSM module */
       bspGsmReset();
-
-      cur_command.ack = true;
     }
 
     /* dispatch next cmd to GSM if response to previous command was received */
@@ -756,7 +754,7 @@ static THD_FUNCTION(gsmTask, arg)
         }
 
         /* start timer to track GSM response */
-        chVTSet(&vt, S2ST(90), gsmLlTimeoutCb, 0);
+        chVTSet(&vt, S2ST(120), gsmLlTimeoutCb, 0);
       }
     }
 
