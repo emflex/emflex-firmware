@@ -29,16 +29,33 @@ Name                 | Description
 -------------------- | ----------------------
 ST_STM32L_DISCOVERY  | STM32L Discovery Kit
 ST_STM32VL_DISCOVERY | STM32VL Discovery Kit
+ST_STM32F3_DISCOVERY | STM32F3 Discovery Kit
+stm32f103_mini       | Tiny board based on STM32F103 MCU
 gtrack               | GSM security board
 
 Also you have to choose one of available profiles.
 
-Name     | Description
--------- | -----------------------
-tracking | GSM security device
-actuator | Window opening solution
+Name          | Description
+------------- | -----------------------
+tracking      | GSM security device
+actuator      | Window opening solution
+gps_tracker   | Security GSM/GPS device 
+wifi_camera   | Monitoring device with WiFi connectivity
+ble_prototype | Smartphone controlled BLE device
 
 To proceed please execute "make"
+
+## Compatibility matrix
+
+Below table lists target-profile compatibility
+
+|                      | tracking | actuator | gps_tracker | wifi_camera | ble_prototype |
+|----------------------|----------|----------|-------------|-------------|---------------|
+| ST_STM32L_DISCOVERY  |     x    |     x    |             |             |               |
+| ST_STM32VL_DISCOVERY |          |          |             |             |               |
+| ST_STM32F3_DISCOVERY |          |          |             |      x      |               |
+| stm32f103_mini       |          |          |             |             |       x       |
+| gtrack               |     x    |          |             |             |               |
 
 ## Commiting new changes
 
