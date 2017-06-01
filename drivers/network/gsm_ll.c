@@ -211,9 +211,23 @@ static RV_t gsmLlCmdBufAllocate(const char *buf, char **out)
   }
   else
   {
+    chHeapFree((void *) *out);
     LOG_ERROR(GSM_CMP, "GSM cmd pool is empty");
     return RV_NOT_READY;
   }
+
+  return RV_SUCCESS;
+}
+
+static RV_t gsmLlCmdBufFree(char *buf)
+{
+  if (!buf)
+  {
+    LOG_ERROR(GSM_CMP, "Null pointer received");
+    return RV_FAILURE;
+  }
+
+  chHeapFree((void *) buf);
 
   return RV_SUCCESS;
 }
@@ -234,6 +248,7 @@ static RV_t gsmLlCmdSend(const char *buf)
   rdymsg = chMBPost(&gsm_tx_mb_s, (msg_t) out, TIME_IMMEDIATE);
   if (rdymsg != MSG_OK)
   {
+    gsmLlCmdBufFree(out);
     LOG_ERROR(GSM_CMP, "Failed to queue TX msg, RV=%u", rdymsg);
     return RV_FAILURE;
   }
@@ -256,6 +271,7 @@ static RV_t gsmLlCmdSendFirst(const char *buf)
   rdymsg = chMBPostAhead(&gsm_tx_mb_s, (msg_t) out, TIME_IMMEDIATE);
   if (rdymsg != MSG_OK)
   {
+    gsmLlCmdBufFree(out);
     LOG_ERROR(GSM_CMP, "Failed to queue TX msg, RV=%u", rdymsg);
     return RV_FAILURE;
   }
@@ -789,7 +805,8 @@ static THD_FUNCTION(gsmTask, arg)
 
 RV_t gsmTaskInit(void)
 {
-  char number[] = "+380982297151";
+  char number[] = "+380982297151"; // Rostyk
+//  char number[] = "+380676708491"; // Denys
 
   /* create message queue to send asynchronous requests */
   chMBObjectInit(&gsm_tx_mb_s, gsm_tx_msg_queue_s, MAILBOX_QUEUE_TX_SIZE);
