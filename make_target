@@ -2,12 +2,12 @@
 
 #export TRG=ST_STM32VL_DISCOVERY
 #export TRG=ST_STM32L_DISCOVERY
-#export TRG=gtrack
-export TRG=stm32f103_mini
+export TRG=gtrack
+#export TRG=stm32f103_mini
 #export TRG=ST_STM32F3_DISCOVERY
 
-#export PROFILE=tracking
+export PROFILE=tracking
 #export PROFILE=actuator
 #export PROFILE=gps_tracker
 #export PROFILE=wifi_camera
-export PROFILE=ble_prototype
+#export PROFILE=ble_prototype

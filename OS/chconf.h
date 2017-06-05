@@ -92,7 +92,7 @@
  *          provide the @p __heap_base__ and @p __heap_end__ symbols.
  * @note    Requires @p CH_CFG_USE_MEMCORE.
  */
-#define CH_CFG_MEMCORE_SIZE                 1024
+#define CH_CFG_MEMCORE_SIZE                 1280
 
 /**
  * @brief   Idle thread automatic spawn suppression.
@@ -352,7 +352,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_ENABLE_ASSERTS               TRUE
+#define CH_DBG_ENABLE_ASSERTS               FALSE
 
 /**
  * @brief   Debug option, trace buffer.

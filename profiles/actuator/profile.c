@@ -31,21 +31,6 @@
 #include "bl_api.h"
 #include "ext_api.h"
 
-uint32_t logTimeStampGet(void)
-{
-  RTCDateTime timp;
-  static uint32_t timestamp_g = 0;
-
-  rtcGetTime(&RTCD1, &timp);
-
-  if (timestamp_g == 0)
-  {
-    timestamp_g = timp.millisecond;
-  }
-
-  return (timp.millisecond - timestamp_g) / 60000;
-}
-
 static RV_t bleResponseParse(const char *blCmdBuf, int32_t len)
 {
   int resp = 0;

@@ -26,6 +26,7 @@
 #include "chprintf.h"
 #include "bsp.h"
 #include "logging.h"
+#include <stdio.h>
 
 #define LOG_MSG_QUEUE_SIZE 15
 #define LOG_BUF_SIZE       256
@@ -34,6 +35,8 @@ mailbox_t logMsg;
 static msg_t logMsgQueue[LOG_MSG_QUEUE_SIZE];
 static THD_WORKING_AREA(logAppThread, LOGGING_THREAD_STACK_SIZE);
 
+static RV_t logTimeStampGet(char *buf, uint32_t len);
+
 MUTEX_DECL(gSDMutex);
 
 static THD_FUNCTION(logAppTask, arg)
@@ -41,14 +44,23 @@ static THD_FUNCTION(logAppTask, arg)
   (void) arg;
   msg_t data = 0;
   msg_t resp = 0;
+  char buf[32] = {0};
 
   while (1)
   {
     /* wait for event */
     if ((resp = chMBFetch(&logMsg, &data, TIME_INFINITE)) >= Q_OK)
     {
+      (void) logTimeStampGet(buf, sizeof(buf));
+
       chMtxLock(&gSDMutex);
+
+      chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), (char *) "<");
+      chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), buf);
+      chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), (char *) "> ");
+
       chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), (char *) data);
+
       chMtxUnlock(&gSDMutex);
       if (data != 0)
       {
@@ -77,7 +89,7 @@ void logEvent(const char *msg, ...)
   bytesWritten = chvprintf(chp, msg, ap);
   va_end(ap);
 
-  logBuf[bytesWritten++] = '\0';
+  logBuf[bytesWritten] = '\0';
 
   pBuf = (char *) chHeapAlloc(0, bytesWritten);
   if (pBuf == NULL)
@@ -90,7 +102,7 @@ void logEvent(const char *msg, ...)
     return;
   }
 
-  strncpy(pBuf, logBuf, bytesWritten);
+  strncpy(pBuf, logBuf, bytesWritten+1);
 
   if (chMBPost(&logMsg, (msg_t) pBuf, TIME_IMMEDIATE) != MSG_OK)
   {
@@ -105,6 +117,35 @@ RV_t loggingAppInit(void)
 
   /* Create thread */
   chThdCreateStatic(logAppThread, sizeof(logAppThread), NORMALPRIO+1, logAppTask, 0);
+
+  return RV_SUCCESS;
+}
+
+static RV_t logTimeStampGet(char *buf, uint32_t len)
+{
+  static BOOL rtcReset = RV_TRUE;
+  RTCDateTime ts;
+
+  memset(&ts, 0x00, sizeof(ts));
+
+  if (!buf)
+  {
+    return RV_FAILURE;
+  }
+
+  if (rtcReset == RV_TRUE)
+  {
+    RTCDateTime tempTs;
+    memset(&tempTs, 0x00, sizeof(tempTs));
+
+    rtcSetTime(&RTCD1, &tempTs);
+    rtcReset = RV_FALSE;
+  }
+
+  rtcGetTime(&RTCD1, &ts);
+
+  snprintf(buf, len, "%u/%u/%u %02u:%02u", ts.day + 1, ts.month + 1, ts.year + 1980,
+           (ts.millisecond / 60000) / 60, (ts.millisecond / 60000) % 60);
 
   return RV_SUCCESS;
 }
