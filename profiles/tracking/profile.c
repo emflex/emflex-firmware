@@ -79,16 +79,29 @@ RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       LOG_TRACE(CONTROL_CMP, "ACTIVE state!");
 
       /* enable collection of statistics from gyro and accel */
-      imuSumAngleGet(&dof);
+      if (RV_SUCCESS != imuSumAngleGet(&dof))
+      {
+        LOG_ERROR(CONTROL_CMP, "Could not get IMU angle value");
+        break;
+      }
 
       LOG_TRACE(CONTROL_CMP, "x=%f y=%f", dof.x, dof.y);
 
-      imuThresholdSet(dof, gImuThresholdInDegrees);
-      imuEnable();
+      if (RV_SUCCESS != imuThresholdSet(dof, gImuThresholdInDegrees))
+      {
+        LOG_ERROR(CONTROL_CMP, "Could not set IMU threshold value");
+        break;
+      }
+
+      if (RV_SUCCESS != imuEnable())
+      {
+        LOG_ERROR(CONTROL_CMP, "Could not enable IMU");
+        break;
+      }
 
       if (RV_SUCCESS != gsmSmsSend("ARM\r\n"))
       {
-        LOG_TRACE(CONTROL_CMP, "Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
       }
       break;
 
@@ -104,7 +117,7 @@ RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       /* request GSM battery discharge, signal level, SIM card balance */
       if (RV_SUCCESS != gsmStateReqSend())
       {
-        LOG_TRACE(CONTROL_CMP, "Could not send state request commands");
+        LOG_ERROR(CONTROL_CMP, "Could not send state request commands");
       }
 
       /* wait for balance event */
@@ -117,7 +130,7 @@ RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       {
         if (RV_SUCCESS != ctrlGsmStateSend())
         {
-         LOG_TRACE(CONTROL_CMP, "Could not retrieve device state");
+          LOG_ERROR(CONTROL_CMP, "Could not retrieve device state");
         }
 
         ctrlWaitForBalance = false;
@@ -161,7 +174,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
       if (RV_SUCCESS != gsmSmsSend("DISARM\r\n"))
       {
-        LOG_TRACE(CONTROL_CMP, "Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
       }
 
       break;
@@ -173,7 +186,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
       if (RV_SUCCESS != gsmSmsSend("ALARM\r\n"))
       {
-        LOG_TRACE(CONTROL_CMP,"Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP,"Sms msg send failed!");
       }
 
       break;
@@ -182,7 +195,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       /* request GSM battery discharge, signal level, SIM card balance */
       if (RV_SUCCESS != gsmStateReqSend())
       {
-        LOG_TRACE(CONTROL_CMP,"Could not send state request commands");
+        LOG_ERROR(CONTROL_CMP, "Could not send state request commands");
       }
 
       /* wait for balance event */
@@ -195,7 +208,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       {
         if (RV_SUCCESS != ctrlGsmStateSend())
         {
-         LOG_TRACE(CONTROL_CMP,"Could not get gTrack state");
+          LOG_ERROR(CONTROL_CMP, "Could not get gTrack state");
         }
 
         ctrlWaitForBalance = false;
@@ -205,7 +218,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
     case LOW_VOLTAGE_EVENT:
       if (RV_SUCCESS != underVoltageProcess())
       {
-        LOG_TRACE(CONTROL_CMP,"Ctrl task: under voltage event failed");
+        LOG_ERROR(CONTROL_CMP, "Ctrl task: under voltage event failed");
       }
       break;
 
@@ -239,7 +252,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
       if (RV_SUCCESS != gsmSmsSend("DISARM\r\n"))
       {
-        LOG_TRACE(CONTROL_CMP,"Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
       }
 
       break;
@@ -253,7 +266,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       /* request GSM battery discharge, signal level, SIM card balance */
       if (RV_SUCCESS != gsmStateReqSend())
       {
-        LOG_TRACE(CONTROL_CMP,"Could not send state request commands");
+        LOG_ERROR(CONTROL_CMP, "Could not send state request commands");
       }
 
       /* wait for balance event */
@@ -266,7 +279,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       {
         if (RV_SUCCESS != ctrlGsmStateSend())
         {
-         LOG_TRACE(CONTROL_CMP,"Could not get gTrack state");
+          LOG_ERROR(CONTROL_CMP, "Could not get gTrack state");
         }
 
         ctrlWaitForBalance = false;
@@ -276,7 +289,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
     case LOW_VOLTAGE_EVENT:
       if (RV_SUCCESS != underVoltageProcess())
       {
-        LOG_TRACE(CONTROL_CMP,"Under voltage event send failed");
+        LOG_ERROR(CONTROL_CMP, "Under voltage event send failed");
       }
       break;
 
@@ -432,7 +445,7 @@ void profileInit(void)
   imuRegisterEventCb(IMU_EVENT_ALARM, ctrlImuEventAlarmProcess);
 
   cnfgrRegister("Control",      ctrlAppInit);
-  cnfgrRegister("GSM",          gsmInit);  
+  cnfgrRegister("GSM",          gsmInit);
   cnfgrRegister("IMU",          accelGyroInit);
   cnfgrRegister("BSP_INIT_FIN", bspInitComplete);
 }
