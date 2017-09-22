@@ -88,7 +88,7 @@ static void bspExtcb1(EXTDriver *extp, expchannel_t channel)
 
   chSysLockFromISR();
 
-  chVTSetI(&vt4, S2ST(5), bspPwrOff, NULL);
+  chVTSetI(&vt4, S2ST(2), bspPwrOff, NULL);
 
   chSysUnlockFromISR();
 
@@ -171,7 +171,7 @@ static void bspGpt4InitialCb(GPTDriver *gptp)
   (void) gptp;
 
   palSetPad(GPIOC, 6);
-  for (uint32_t i = 0; i < 100; i++)
+  for (uint32_t i = 0; i < 300; i++)
       ;
   palClearPad(GPIOC, 6);
 }
@@ -201,7 +201,7 @@ RV_t bspInitComplete(void)
     extChannelEnable(&EXTD1, BSP_PWR_OFF_CHANNEL);
 
     /* Display normal device activity.
-     * Blink status LED each 10 sec */
+     * Blink status LED each 3 sec */
     bspStartTimer3Sec();
 
     return RV_SUCCESS;

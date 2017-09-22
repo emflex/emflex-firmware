@@ -377,6 +377,9 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
     /* allow commands to be dispatched to GSM */
     cur_command.ack = true;
 
+    /* Clear GSM response timer */
+    chVTReset(&vt);
+
     gsmIsOnSet();
 
     LOG_TRACE(GSM_CMP, "GSM is ready");
@@ -465,7 +468,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
       /* allow next command to be dispatched to GSM module */
       cur_command.ack = true;
 
-      /* Clear GSM response timeout timer */
+      /* Clear GSM response timer */
       chVTReset(&vt);
     }
     else if (!strcmp(buf, "ERROR"))
@@ -476,7 +479,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
       /* allow next command to be dispatched to GSM module */
       cur_command.ack = true;
 
-      /* Clear GSM response timeout timer */
+      /* Clear GSM response timer */
       chVTReset(&vt);
 
       LOG_ERROR(GSM_CMP, "GSM replied with error:%s", buf);
@@ -508,7 +511,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
       /* allow next command to be dispatched to GSM module */
       cur_command.ack = true;
 
-      /* Clear GSM response timeout timer */
+      /* Clear GSM response timer */
       chVTReset(&vt);
 
       LOG_ERROR(GSM_CMP, "GSM replied with error:%s", buf);
@@ -703,7 +706,7 @@ void gsmLlStatusSendCb(void *param)
   gGsmStatusReqSend++;
 
   /* Restart timer */
-  chVTSet(&vtGsmStatus, S2ST(60), gsmLlStatusSendCb, 0);
+  chVTSet(&vtGsmStatus, S2ST(53), gsmLlStatusSendCb, 0);
 }
 
 static THD_FUNCTION(gsmTask, arg)
@@ -721,10 +724,18 @@ static THD_FUNCTION(gsmTask, arg)
     /*Decrease the read speed from UART*/
     chThdSleepMilliseconds(200);
 
-    /* TODO: add support to re-send complex commands, like sending SMS */
+    /* Re-send last command if GSM does not respond within timeout */
     if (gGsmLastCmdResend)
     {
-      LOG_ERROR(GSM_CMP, "GSM response timeout. Re-sending command:%s", gsmCurrCmd);
+      gGsmLastCmdResend = 0;
+
+      /* re-send only "AT" commands */
+      if (0 != strncmp(gsmCurrCmd, "AT", 2))
+      {
+        continue;
+      }
+
+      LOG_TRACE(GSM_CMP, "GSM module does not respond within timeout. Re-sending command:%s", gsmCurrCmd);
      
       if (RV_SUCCESS != gsmLlCmdSendFirst(gsmCurrCmd))
       {
@@ -732,6 +743,7 @@ static THD_FUNCTION(gsmTask, arg)
       }
 
       /* Reset GSM module */
+      LOG_TRACE(GSM_CMP, "Resetting GSM module...");
       bspGsmReset();
     }
 
@@ -751,7 +763,7 @@ static THD_FUNCTION(gsmTask, arg)
         rv = gsmLlSdWrite(pBuf);
         if (RV_SUCCESS != rv)
         {
-          LOG_ERROR(GSM_CMP, "GSM task failed to send command with %error %u", rv);
+          LOG_ERROR(GSM_CMP, "GSM task failed to send command with error %u", rv);
         }
 
         /* enter sleep mode */
@@ -779,7 +791,7 @@ static THD_FUNCTION(gsmTask, arg)
     {
       LOG_TRACE(GSM_CMP, "GSM returned %u bytes", gsmInByteNum);
 
-      gsmLlCmdDump(gsmInByteNum, buf);
+      //gsmLlCmdDump(gsmInByteNum, buf);
 
       rv = gsmModuleCmdParse(buf, gsmInByteNum);
       if (rv == RV_FAILURE)
@@ -874,6 +886,8 @@ RV_t gsmCallEventCb(gsmEvent_t event)
 
 RV_t gsmModuleInit()
 {
+  /* start timer to notify user about system status */
+  chVTSet(&vtGsmStatus, S2ST(53), gsmLlStatusSendCb, 0);
 
   /* Check whether GSM module is already running.
    * Send test command and wait for GSM reply. */
@@ -897,9 +911,6 @@ RV_t gsmModuleInit()
   }
 
   gsmReadySet();
-
-  /* start timer to track GSM response */
-  chVTSet(&vtGsmStatus, S2ST(60), gsmLlStatusSendCb, 0);
 
   LOG_TRACE(GSM_CMP, "GSM module configured successfully");
 

@@ -91,6 +91,8 @@ void logEvent(const char *msg, ...)
 
   logBuf[bytesWritten] = '\0';
 
+  bytesWritten++;
+
   pBuf = (char *) chHeapAlloc(0, bytesWritten);
   if (pBuf == NULL)
   {
@@ -102,7 +104,9 @@ void logEvent(const char *msg, ...)
     return;
   }
 
-  strncpy(pBuf, logBuf, bytesWritten+1);
+  memset(pBuf, 0x00, bytesWritten);
+
+  strncpy(pBuf, logBuf, bytesWritten);
 
   if (chMBPost(&logMsg, (msg_t) pBuf, TIME_IMMEDIATE) != MSG_OK)
   {
