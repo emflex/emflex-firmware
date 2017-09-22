@@ -48,7 +48,7 @@ typedef enum
 #define MAX_BUF_LEN             128
 #define BUF_LEN_64              64
 
-uint32_t timeElapesedGet(void);
+uint32_t timeElapsedGet(void);
 
 void profileInit(void);
 

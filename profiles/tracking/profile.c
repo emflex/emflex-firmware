@@ -311,8 +311,8 @@ RV_t doStateTest(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
   return RV_SUCCESS;
 }
 
-/* make MT safe */
-uint32_t timeElapesedGet(void)
+/* TODO: make MT safe */
+uint32_t timeElapsedGet(void)
 {
   RTCDateTime timp;
   static uint32_t timestamp_g = 0;
