@@ -34,6 +34,8 @@
 
 const uint8_t gImuThresholdInDegrees = 1.0;
 
+MUTEX_DECL(gSDMutex);
+
 typedef enum
 {
   START_EVENT = 0,
@@ -417,6 +419,35 @@ static RV_t underVoltageProcess(void)
     LOG_TRACE(CONTROL_CMP,"Low voltage msg send failed!");
     return RV_FAILURE;
   }
+
+  return RV_SUCCESS;
+}
+
+RV_t logTimeStampGet(char *buf, uint32_t len)
+{
+  static BOOL rtcReset = RV_TRUE;
+  RTCDateTime ts;
+
+  memset(&ts, 0x00, sizeof(ts));
+
+  if (!buf)
+  {
+    return RV_FAILURE;
+  }
+
+  if (rtcReset == RV_TRUE)
+  {
+    RTCDateTime tempTs;
+    memset(&tempTs, 0x00, sizeof(tempTs));
+
+    rtcSetTime(&RTCD1, &tempTs);
+    rtcReset = RV_FALSE;
+  }
+
+  rtcGetTime(&RTCD1, &ts);
+
+  snprintf(buf, len, "%u/%u/%u %02u:%02u", ts.day + 1, ts.month + 1, ts.year + 1980,
+           (ts.millisecond / 60000) / 60, (ts.millisecond / 60000) % 60);
 
   return RV_SUCCESS;
 }
