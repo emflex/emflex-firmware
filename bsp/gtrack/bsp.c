@@ -26,6 +26,11 @@
 
 #define BSP_PWR_OFF_CHANNEL GPIOB_PIN12
 
+extern RV_t ctrlGsmEventSmsStartProcess(void);
+
+static thread_reference_t trp = NULL;
+static THD_WORKING_AREA(buttonThread, 256);
+
 void bspGsmPowerOnOff(void)
 {
   /* pull down PWRKEY pin in GSM module */
@@ -57,42 +62,15 @@ void bspSystemPowerOff(void)
   return;
 }
 
-static void bspPwrOff(void *arg) {
-
-  (void)arg;
-
-  if (palReadPad(GPIOB, BSP_PWR_OF_BUT))
-  {
-      /* switch off GSM module */
-      /* pull down PWRKEY pin in GSM module */
-      palSetPad(GPIOC, BSP_GSM_PWR_PIN);
-
-      /* wait at least 1 sec */
-      for (uint32_t i = 0; i < 0x8FFFFF; i++)
-        ;
-
-      /* release PWRKEY (automatically raises HIGH) */
-      palClearPad(GPIOC, BSP_GSM_PWR_PIN);
-
-      /* switch off device */
-      bspSystemPowerOff();
-  }
-}
-
 static void bspExtcb1(EXTDriver *extp, expchannel_t channel)
 {
   (void)extp;
   (void)channel;
 
-  static virtual_timer_t vt4;
-
+  /* Wakes up the thread.*/
   chSysLockFromISR();
-
-  chVTSetI(&vt4, S2ST(2), bspPwrOff, NULL);
-
+  chThdResumeI(&trp, 0);
   chSysUnlockFromISR();
-
-  return;
 }
 
 /* External interrupt/event controller (EXTI) config.
@@ -125,10 +103,59 @@ static const EXTConfig bspPwrCfg = {
   }
 };
 
+THD_FUNCTION(buttonTask, arg)
+{
+  (void)arg;
+
+  while (true)
+  {
+    /* Waiting for the wake up event from button EXTI.*/
+    chSysLock();
+    chThdSuspendS(&trp);
+    chSysUnlock();
+
+    /* wait 3 sec */
+    chThdSleepSeconds(3);
+
+    /* if button is still pressed - power off device.
+     * Otherwise assume user want to enable Active state */
+    if (PAL_LOW == palReadPad(GPIOB, GPIOB_PIN12))
+    {
+        /* let user complete his tasks (leave the room or a car) prior to enable alarm */
+        chThdSleepSeconds(20);
+
+        ctrlGsmEventSmsStartProcess();
+    }
+    else
+    {
+      /* switch on status LED */
+      palSetPad(GPIOC, 6);
+
+      /* switch off GSM module */
+      /* pull down PWRKEY pin in GSM module */
+      palSetPad(GPIOC, BSP_GSM_PWR_PIN);
+
+      /* wait at least 1 sec */
+      chThdSleepSeconds(1);
+
+      /* release PWRKEY (automatically raises HIGH) */
+      palClearPad(GPIOC, BSP_GSM_PWR_PIN);
+
+      /* switch off device */
+      bspSystemPowerOff();
+    }
+  }
+}
+
 RV_t bspInit(void)
 {
-  /* Device initialization has started */
+  /* Device initialization has started.
+     Switch on status LED */
   palSetPad(GPIOC, 6);
+
+  /* Ensure power on button is pressed at least 3 sec.
+     Otherwise device will be powered off */
+  chThdSleepSeconds(3);
 
   /* Activates the UART driver for debugging,
    * PB10 and PB11 are routed to USART3. */
@@ -140,11 +167,14 @@ RV_t bspInit(void)
   palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
   palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
 
-  /* start EXTI driver that handles power off event */
+  /* start EXTI driver that handles user button events */
   extStart(&EXTD1, &bspPwrCfg);
 
   /* set IO pin responsible for switching DC-DC converter */
   bspSystemPowerOn();
+
+  /* Create thread */
+  chThdCreateStatic(buttonThread, sizeof(buttonThread), NORMALPRIO+1, buttonTask, 0);
 
   return RV_SUCCESS;
 }

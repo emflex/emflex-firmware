@@ -58,7 +58,6 @@ typedef enum
 static RV_t ctrlGsmEventUpProcess(void);
 static RV_t ctrlGsmEventDownProcess(void);
 static RV_t ctrlGsmEventBalanceProcess(void);
-static RV_t ctrlGsmEventSmsStartProcess(void);
 static RV_t ctrlGsmEventSmsStopProcess(void);
 static RV_t ctrlGsmEventSmsStateProcess(void);
 static RV_t ctrlImuEventAlarmProcess(void);
@@ -344,7 +343,7 @@ static RV_t ctrlGsmEventBalanceProcess(void)
   return ctrlEventPost(BALANCE_EVENT);
 }
 
-static RV_t ctrlGsmEventSmsStartProcess(void)
+RV_t ctrlGsmEventSmsStartProcess(void)
 {
   return ctrlEventPost(START_EVENT);
 }
