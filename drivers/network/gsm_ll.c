@@ -392,6 +392,8 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
   }
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_POWER_DOWN_EVENT))
   {    
+    bspSystemPowerOff();
+
     return RV_SUCCESS;
   }
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_RDY_EVENT))
@@ -723,6 +725,10 @@ static THD_FUNCTION(gsmTask, arg)
   {
     /*Decrease the read speed from UART*/
     chThdSleepMilliseconds(200);
+
+#ifdef DEBUG
+    debugStackDepth(GSM_CMP, (uint8_t *) &gsmThread, sizeof(gsmThread));
+#endif
 
     /* Re-send last command if GSM does not respond within timeout */
     if (gGsmLastCmdResend)

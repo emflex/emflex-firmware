@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O0 -ggdb -fomit-frame-pointer -falign-functions=16 -lm -Dtimegm=mktime -std=c99
+  USE_OPT = -Og -g -gdwarf-2 -fomit-frame-pointer -falign-functions=16 -lm -Dtimegm=mktime -std=c99
 endif
 
 # C specific options here (added to USE_OPT).
@@ -190,7 +190,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS +=-DCHPRINTF_USE_FLOAT -DDEBUG
+UDEFS +=-DCHPRINTF_USE_FLOAT -DDEBUG -DDEBUG_INLINE
 
 # Define ASM defines here
 UADEFS =

@@ -22,6 +22,7 @@
 #include "logging.h"
 #include "bsp.h"
 #include "cli.h"
+#include "utils.h"
 
 static uint32_t emptyElement = 0;
 static cliEntry_t cliCmdsList[CLI_CMD_MAX_NUMBER];
@@ -139,6 +140,10 @@ static THD_FUNCTION(cliTask, arg)
 
   while (1)
   {
+#ifdef DEBUG
+    debugStackDepth(CLI_CMP, (uint8_t *) &cliThread, sizeof(cliThread));
+#endif
+
     chThdSleepMilliseconds(300);
 
     chMtxLock(&gSDMutex);
@@ -150,6 +155,7 @@ static THD_FUNCTION(cliTask, arg)
       /* echo received data */
       buf[cliInByteNum] = '\0';
       cliEchoReturn(buf, cliInByteNum);
+
       if (RV_SUCCESS == cliCmdParse(buf, cliInByteNum))
       {
         chMtxLock(&gSDMutex);
@@ -160,6 +166,10 @@ static THD_FUNCTION(cliTask, arg)
 
     memset(buf, 0x00, sizeof(buf));
     cliInByteNum = 0;
+
+#ifdef DEBUG
+    debugStackDepth(CLI_CMP, (uint8_t *) &cliThread, sizeof(cliThread));
+#endif
   }
 }
 

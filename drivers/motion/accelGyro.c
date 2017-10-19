@@ -364,6 +364,10 @@ static THD_FUNCTION(accelGyroTask, arg)
   {
     imuWait();
 
+#ifdef DEBUG
+    debugStackDepth(IMU_CMP, (uint8_t *) &accelGyroThread, sizeof(accelGyroThread));
+#endif
+
     memset(&sumDof, 0x00, sizeof(sumDof));
     for (i = 0; i < numSamples; i++)
     {

@@ -64,11 +64,7 @@ const char* ctrlCurStateToStr()
 
 void changeState(ctrl_sm_event_t ev)
 {
-  LOG_TRACE(CONTROL_CMP, "Old state is %s!", ctrlCurStateToStr());
-
   stateArray[c_state].cb(ev, &c_state);
-
-  LOG_TRACE(CONTROL_CMP, "New state is %s!", ctrlCurStateToStr());
 }
 
 static THD_WORKING_AREA(ctrlAppThread, CTRL_TASK_STACK_SIZE);
@@ -85,7 +81,11 @@ static THD_FUNCTION(ctrlAppTask, arg)
     /* wait for event */
     if ((resp = chMBFetch(&alertMsg, &val, TIME_INFINITE)) >= Q_OK)
     {
-       changeState(val);
+      changeState(val);
+
+#ifdef DEBUG
+      debugStackDepth(CNTR_CMP, (uint8_t *) &ctrlAppThread, sizeof(ctrlAppThread));
+#endif
     }
   }
 }

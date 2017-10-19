@@ -19,6 +19,7 @@
 ******************************************************************************
  */
 
+#include "logging.h"
 #include "utils.h"
 
 void reverse(char *s)
@@ -142,3 +143,53 @@ char *osapiItoa(int val, char *rez, uint32_t rezLen)
 
   return rez;
 }
+
+#ifdef DEBUG
+
+extern mutex_t gSDMutex;
+
+void debugStackDepth(uint8_t thread_id, const uint8_t *wa_addr, uint32_t total_stack_size)
+{
+  const uint8_t *stack_base_addr = wa_addr + sizeof(thread_t);
+  const uint8_t *cur_stack_p = stack_base_addr;
+  const uint8_t *stack_end_addr = wa_addr + total_stack_size;
+
+  while (*cur_stack_p == CH_DBG_STACK_FILL_VALUE && cur_stack_p < stack_end_addr)
+  {
+    cur_stack_p++;
+  }
+
+  if ((cur_stack_p - stack_base_addr) < 128)
+  {
+    /* dump stack */
+
+    chMtxLock(&gSDMutex);
+
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\r');
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\n');
+
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, thread_id);
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, ' ');
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, (cur_stack_p - stack_base_addr));
+
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\n');
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\r');
+
+    while (wa_addr < stack_end_addr)
+    {
+      streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, *wa_addr);
+
+      wa_addr++;
+    }
+
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\n');
+    streamPut((BaseSequentialStream *) &CLI_SERIAL_PORT, '\r');
+    chMtxUnlock(&gSDMutex);
+
+    /* halt CPU */
+    while (1)
+      ;
+
+  }
+}
+#endif

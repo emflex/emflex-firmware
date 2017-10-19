@@ -68,6 +68,8 @@ RV_t cnfgrInvoke(void)
     if (RV_SUCCESS != cidList[i].cb())
     {
       LOG_ERROR(CNFGR_CMP, "Failed to initialize %s!", cidList[i].name);
+
+      return RV_FAILURE;
     }
   }
 

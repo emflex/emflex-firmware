@@ -50,13 +50,18 @@ int main(void)
   cnfgrRegister("CLI", cliInit);
   cnfgrRegister("Logging", loggingAppInit);
 
+  /* init persistent logging */
+  persist_init();
+
   profileInit();
 
-  cnfgrInvoke();
+  if (RV_SUCCESS != cnfgrInvoke())
+  {
+    /* need to handle this correctly */
+  }
 
   while (1)
-  {
-  }
+   ;
 
   return 0;
 }

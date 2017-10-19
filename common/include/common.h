@@ -45,6 +45,16 @@ typedef enum
   RV_FALSE
 } BOOL;
 
+typedef enum
+{
+  BSP_CMP,
+  CLI_CMP,
+  CNTR_CMP,
+  IMU_CMP,
+  GSM_CMP
+} CMPS;
+
+
 #define MAX_BUF_LEN             128
 #define BUF_LEN_64              64
 

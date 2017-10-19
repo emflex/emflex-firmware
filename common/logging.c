@@ -21,6 +21,39 @@
 #include "common.h"
 #include "logging.h"
 
+#include "memstreams.h"
+
+MUTEX_DECL(gSDMutex);
+
+RV_t logTimeStampGet(char *buf, uint32_t len)
+{
+  static BOOL rtcReset = RV_TRUE;
+  RTCDateTime ts;
+
+  memset(&ts, 0x00, sizeof(ts));
+
+  if (!buf)
+  {
+    return RV_FAILURE;
+  }
+
+  if (rtcReset == RV_TRUE)
+  {
+    RTCDateTime tempTs;
+    memset(&tempTs, 0x00, sizeof(tempTs));
+
+    rtcSetTime(&RTCD1, &tempTs);
+    rtcReset = RV_FALSE;
+  }
+
+  rtcGetTime(&RTCD1, &ts);
+
+  snprintf(buf, len, "<%u/%u/%u %02u:%02u> ", ts.day + 1, ts.month + 1, ts.year + 1980,
+           (ts.millisecond / 60000) / 60, (ts.millisecond / 60000) % 60);
+
+  return RV_SUCCESS;
+}
+
 #if defined(DEBUG) && !defined(DEBUG_INLINE)
 
 #include <string.h>
@@ -125,9 +158,84 @@ RV_t loggingAppInit(void)
 }
 
 #else
+
 RV_t loggingAppInit(void)
 {
   /* do nothing */
   return RV_SUCCESS;
 }
+
+RV_t persistentLogProcess(void)
+{
+  uint32_t i = 1;
+  char buf[LOG_ENTRY_SIZE] = {0};
+
+  chMtxLock(&gSDMutex);
+  chprintf((BaseSequentialStream *) &CLI_SERIAL_PORT, "=====Persistent logs=====\r\n");
+  chMtxUnlock(&gSDMutex);
+
+  while (persist_get_next(buf, sizeof(buf)))
+  {
+    chMtxLock(&gSDMutex);
+    chprintf((BaseSequentialStream *) &CLI_SERIAL_PORT, "#%u:%s\r\n", i, buf);
+    chMtxUnlock(&gSDMutex);
+
+    i++;
+  }
+
+  return RV_SUCCESS;
+}
+
+void logInline(const char *fmt, ...)
+{
+  va_list ap;
+  char timeBuf[32] = {0};
+
+  logTimeStampGet(timeBuf, sizeof(timeBuf));
+
+  chMtxLock(&gSDMutex);
+
+  chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), timeBuf);
+
+  va_start(ap, fmt);
+  chvprintf((BaseSequentialStream *) &CLI_SERIAL_PORT, fmt, ap);
+  va_end(ap);
+
+  chMtxUnlock(&gSDMutex);
+}
+
+void logError(const char *fmt, ...)
+{
+  va_list ap;
+  char logBuf[LOG_ENTRY_SIZE] = {0};
+  char timeBuf[32] = {0};
+  char *textToken = 0;
+  uint32_t textTokenLenght = 0;
+  MemoryStream ms;
+  BaseSequentialStream *chp;
+
+  logTimeStampGet(timeBuf, sizeof(timeBuf));
+
+  strncpy(logBuf, timeBuf, sizeof(logBuf));
+
+  textToken = logBuf + strlen(timeBuf);
+  textTokenLenght = sizeof(logBuf) - strlen(timeBuf);
+
+  /* Memory stream object to be used as a string writer, reserving one
+     byte for the final zero.*/
+  msObjectInit(&ms, (uint8_t *) textToken, textTokenLenght, 0);
+
+  /* Performing the print operation using the common code.*/
+  chp = (BaseSequentialStream *)(void *)&ms;
+  va_start(ap, fmt);
+  chvprintf(chp, fmt, ap);
+  va_end(ap);
+
+  /* Terminate with a zero */
+  if (ms.eos < sizeof(logBuf))
+      logBuf[ms.eos] = 0;
+
+  persist_add(logBuf, LOG_ENTRY_SIZE);
+}
+
 #endif /* #ifndef DEBUG_INLINE */

@@ -10,5 +10,6 @@ SRC:= drivers/i2c_api.c \
       drivers/network/gsm_api.c \
       drivers/network/gsm_ll.c \
       drivers/utils.c \
+      drivers/eeprom/stm32l1xx_flash.c
 
 CSRC+=$(patsubst %.c, %.o, $(SRC))

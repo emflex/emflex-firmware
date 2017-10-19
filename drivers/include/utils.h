@@ -30,6 +30,8 @@ extern RV_t floatToStr(float f, char *rez, int len);
 
 extern char *osapiItoa(int val, char *rez, uint32_t rezLen);
 
+extern void debugStackDepth(uint8_t thread_id, const uint8_t *wa_addr, const uint32_t total_stack_size);
+
 /* Assumes (d) is an array and not a pointer */
 #define STRCAT_SAFE(d, s) strncat((d), (s), sizeof(d) - strlen(d))
 

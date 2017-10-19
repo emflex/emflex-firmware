@@ -23,13 +23,15 @@
 
 #include "common.h"
 #include "bsp.h"
+#include "logging.h"
+#include "utils.h"
 
 #define BSP_PWR_OFF_CHANNEL GPIOB_PIN12
 
 extern RV_t ctrlGsmEventSmsStartProcess(void);
 
 static thread_reference_t trp = NULL;
-static THD_WORKING_AREA(buttonThread, 256);
+static THD_WORKING_AREA(buttonThread, BSP_THREAD_STACK_SIZE);
 
 void bspGsmPowerOnOff(void)
 {
@@ -109,6 +111,10 @@ THD_FUNCTION(buttonTask, arg)
 
   while (true)
   {
+#ifdef DEBUG
+    //debugStackDepth(BSP_CMP, (uint8_t *) &buttonThread, sizeof(buttonThread));
+#endif
+
     /* Waiting for the wake up event from button EXTI.*/
     chSysLock();
     chThdSuspendS(&trp);

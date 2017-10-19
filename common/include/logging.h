@@ -27,55 +27,34 @@
 #include "common.h"
 #include "chprintf.h"
 #include "bsp.h"
+#include "persist_log.h"
 
 extern void logEvent(const char *msg, ...);
-extern mutex_t gSDMutex;
-extern RV_t logTimeStampGet(char *buf, uint32_t len);
+extern void logInline(const char *fmt, ...);
+extern void logError(const char *fmt, ...);
 extern RV_t loggingAppInit(void);
-
-/* print logs directly to serial port */
-#define DEBUG_INLINE
+extern RV_t persistentLogProcess(void);
 
 #ifdef DEBUG
 
 #ifdef DEBUG_INLINE
-#define LOG_TRACE(cmp, msg, ...)                                                                \
-   do                                                                                           \
-   {                                                                                            \
-     char timeBuf[32] = {0};                                                                    \
-     logTimeStampGet(timeBuf, sizeof(timeBuf));                                                 \
-     chMtxLock(&gSDMutex);                                                                      \
-     chprintf((BaseSequentialStream *) &CLI_SERIAL_PORT, "<%s> DEBUG: %s(%u): " msg "\r\n",     \
-               timeBuf, __FUNCTION__, __LINE__, ##__VA_ARGS__);                                 \
-     chMtxUnlock(&gSDMutex);                                                                    \
-   }                                                                                            \
-   while(0);
+#define LOG_TRACE(cmp, msg, ...)                                                       \
+    logInline("DEBUG: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_ERROR(cmp, msg, ...)                                                       \
+    logInline("ERROR: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);    \
+    logError("ERROR: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);
 #else
-#define LOG_TRACE(cmp, msg, ...)            \
+#define LOG_TRACE(cmp, msg, ...)                                                       \
    logEvent("DEBUG: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_ERROR(cmp, msg, ...)                                                       \
+   logEvent("ERROR: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);
 #endif /*DEBUG_INLINE*/
 
-#else
+#else /*DEBUG*/
 
 #define LOG_TRACE(cmp, msg, ...)
+#define LOG_ERROR(cmp, msg, ...)
 
 #endif /*DEBUG*/
-
-#ifdef DEBUG_INLINE
-#define LOG_ERROR(cmp, msg, ...)                                                       \
-    do                                                                                           \
-    {                                                                                            \
-      char timeBuf[32] = {0};                                                                    \
-      logTimeStampGet(timeBuf, sizeof(timeBuf));                                                 \
-      chMtxLock(&gSDMutex);                                                                      \
-      chprintf((BaseSequentialStream *) &CLI_SERIAL_PORT, "<%s> ERROR: %s(%u): " msg "\r\n",     \
-                timeBuf, __FUNCTION__, __LINE__, ##__VA_ARGS__);                                 \
-      chMtxUnlock(&gSDMutex);                                                                    \
-    }                                                                                            \
-    while(0);
-#else
-#define LOG_ERROR(cmp, msg, ...)                                                       \
-    logEvent("ERROR: %s(%u): " msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);
-#endif /*DEBUG_INLINE*/
 
 #endif /*LOG_API*/
