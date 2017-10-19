@@ -45,7 +45,6 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 #include "eeprom.h"
 
 #define EEPROM_OFFSET      8
-#define LOG_ENTRY_SIZE     96
 #define BUFFER_LENGTH      (EEPROM_SIZE / LOG_ENTRY_SIZE)
 
 static uint32_t p_head;

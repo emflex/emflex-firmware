@@ -20,6 +20,7 @@
  */
 #include "common.h"
 #include "logging.h"
+#include "eeprom.h"
 
 #include "memstreams.h"
 
