@@ -207,23 +207,23 @@ static void bspGpt4InitialCb(GPTDriver *gptp)
   (void) gptp;
 
   palSetPad(GPIOC, 6);
-  for (uint32_t i = 0; i < 300; i++)
+  for (uint32_t i = 0; i < 500; i++)
       ;
   palClearPad(GPIOC, 6);
 }
 
 /* GPT4 initial configuration. */
 static const GPTConfig bspGpt4InitialCfg = {
-  1000,         /* 1kHz timer clock.*/
+  1000,                /* 1kHz timer clock.*/
   bspGpt4InitialCb,    /* Timer callback.*/
   0,
   0
 };
 
-static RV_t bspStartTimer3Sec(void)
+static RV_t bspStartTimer5Sec(void)
 {
   gptStart(&GPTD4, &bspGpt4InitialCfg);
-  gptStartContinuous(&GPTD4, 3000);
+  gptStartContinuous(&GPTD4, 5000);
 
   return RV_SUCCESS;
 }
@@ -236,9 +236,8 @@ RV_t bspInitComplete(void)
     /* enable processing power on/off button event */
     extChannelEnable(&EXTD1, BSP_PWR_OFF_CHANNEL);
 
-    /* Display normal device activity.
-     * Blink status LED each 3 sec */
-    bspStartTimer3Sec();
+    /* Display normal device activity */
+    bspStartTimer5Sec();
 
     return RV_SUCCESS;
 }
@@ -257,7 +256,7 @@ RV_t bspNormalActivity()
 {
   gptStopTimer(&GPTD4);
 
-  bspStartTimer3Sec();
+  bspStartTimer5Sec();
 
   return RV_SUCCESS;
 }

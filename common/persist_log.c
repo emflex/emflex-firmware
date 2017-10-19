@@ -2,7 +2,6 @@
 * File:        persist_log.c
 * Created:     Sept 30, 2017
 * Description: Persistent storage is implemented as a circular buffer.
-*
 * Author:      Rostyslav Spolyak
 ******************************************************************************
 

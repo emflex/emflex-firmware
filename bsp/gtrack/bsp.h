@@ -1,11 +1,8 @@
 /*****************************************************************************
 * File:        bsp.h
-*
 * Created on:  Dec 27, 2015
-*
 * Description: platform specific routines for gtrack PCB
-*
-* Author:      rostokus
+* Author:      Rostyslav Spolyak
 ******************************************************************************
 
   This library is free software; you can redistribute it and/or

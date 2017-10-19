@@ -3,9 +3,8 @@
 * File:         main.c
 * Description:  Entry point of GSM tracker. Creates tasks and
 *               goes to infinite loop
-*
 * Created on:   May 09, 2015
-* Author:       rostokus
+* Author:       Rostyslav Spolyak
 ******************************************************************************
 
   This library is free software; you can redistribute it and/or

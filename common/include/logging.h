@@ -1,9 +1,7 @@
 /*****************************************************************************
 * File:       logging.h
-*
 * Created on: Jul 26, 2016
-*
-* Author:     rostokus
+* Author:     Rostyslav Spolyak
 ******************************************************************************
 
   This library is free software; you can redistribute it and/or

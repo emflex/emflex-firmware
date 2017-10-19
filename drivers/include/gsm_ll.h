@@ -1,8 +1,7 @@
 /*****************************************************************************
 * File:       gsm_ll.h
-*
 * Created on: May 01, 2015
-* Author:     rostokus
+* Author:     Rostyslav Spolyak
 ******************************************************************************
 
   This library is free software; you can redistribute it and/or
