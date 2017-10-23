@@ -33,6 +33,8 @@ extern void logError(const char *fmt, ...);
 extern RV_t loggingAppInit(void);
 extern RV_t persistentLogProcess(void);
 
+extern mutex_t gSDMutex;
+
 #ifdef DEBUG
 
 #ifdef DEBUG_INLINE

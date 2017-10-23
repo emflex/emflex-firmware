@@ -29,9 +29,9 @@
 #define EOF_SMS '\x1A'
 #define NULL_SYM '\0'
 
-#define GSM_PHONE_BOOK_SIZE 10
+#define GSM_PHONE_BOOK_SIZE  3
 #define GSM_PHONE_NUMBER_LEN 17
-#define GSM_PHONE_NAME_LEN 40
+#define GSM_PHONE_NAME_LEN   40
 
 #define GSM_SIGNAL_LEVEL                "AT+CSQ\r"
 #define GSM_BATTERY_DISCHARGE           "AT+CBC\r"
@@ -57,8 +57,6 @@ typedef struct phoneBook_s
   phoneBookEntry_t data[GSM_PHONE_BOOK_SIZE];
   uint8_t size;
 
-  char resp_number[GSM_PHONE_NUMBER_LEN];
-  bool resp_is_set;
 } phoneBook_t;
 
 typedef enum

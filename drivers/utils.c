@@ -146,8 +146,6 @@ char *osapiItoa(int val, char *rez, uint32_t rezLen)
 
 #ifdef DEBUG
 
-extern mutex_t gSDMutex;
-
 void debugStackDepth(uint8_t thread_id, const uint8_t *wa_addr, uint32_t total_stack_size)
 {
   const uint8_t *stack_base_addr = wa_addr + sizeof(thread_t);

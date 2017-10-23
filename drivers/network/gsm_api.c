@@ -53,13 +53,7 @@ RV_t gsmSmsSend(const char* smsStr)
     return RV_FAILURE;
   }
 
-  if (phoneBook_g.resp_is_set == FALSE)
-  {
-    LOG_TRACE(GSM_CMP,"No number to respond to");
-    return RV_FAILURE;
-  }
-
-  return gsmSendSmsToNumber(phoneBook_g.resp_number, smsStr);
+  return gsmSendSmsToNumber(phoneBook_g.data[0].number, smsStr);
 }
 
 /* Call a number */
@@ -79,24 +73,6 @@ RV_t gsmRegisterEventCb(gsmEvent_t event, gsmCbFunc_t cb)
   }
 
   gsmCbArray_g[event] = cb;
-
-  return RV_SUCCESS;
-}
-
-RV_t gsmVoiceCallHandle(void)
-{
-  static BOOL startCmd = RV_FALSE;
-
-  if (startCmd == RV_FALSE)
-  {
-    gsmCallEventCb(GSM_EVENT_SMS_START);
-    startCmd = RV_TRUE;
-  }
-  else
-  {
-    gsmCallEventCb(GSM_EVENT_SMS_STOP);
-    startCmd = RV_FALSE;
-  }
 
   return RV_SUCCESS;
 }

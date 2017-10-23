@@ -31,8 +31,6 @@
 #include "utils.h"
 #include "logging.h"
 
-const uint8_t gImuThresholdInDegrees = 1.0;
-
 typedef enum
 {
   START_EVENT = 0,
@@ -40,7 +38,8 @@ typedef enum
   STATE_EVENT,
   ALARM_EVENT,
   BALANCE_EVENT,
-  LOW_VOLTAGE_EVENT
+  LOW_VOLTAGE_EVENT,
+  VOICE_CALL_EVENT
 } track_sm_event_t;
 
 typedef enum
@@ -52,54 +51,55 @@ typedef enum
   LAST_STATE,
 } track_sm_state_t;
 
-static RV_t ctrlGsmEventUpProcess(void);
-static RV_t ctrlGsmEventDownProcess(void);
-static RV_t ctrlGsmEventBalanceProcess(void);
-static RV_t ctrlGsmEventSmsStopProcess(void);
-static RV_t ctrlGsmEventSmsStateProcess(void);
-static RV_t ctrlImuEventAlarmProcess(void);
-static RV_t ctrlVoltageEventAlarmProcess(void);
+const uint8_t gImuThresholdInDegrees = 1.0;
+
+static track_sm_event_t gsmToEventMapping(gsmEvent_t gsmEvent)
+{
+  switch (gsmEvent)
+  {
+    case GSM_EVENT_UP:
+    case GSM_EVENT_SMS_START:
+      return START_EVENT;
+    case GSM_EVENT_DOWN:
+    case GSM_EVENT_SMS_STOP:
+      return STOP_EVENT;
+    case GSM_EVENT_SMS_STATE:
+      return STATE_EVENT;
+    case GSM_EVENT_BALANCE_SIGN_BATT:
+      return BALANCE_EVENT;
+    case GSM_EVENT_POWER_LOW:
+      return LOW_VOLTAGE_EVENT;
+    case GSM_EVENT_VOICE_CALL:
+      return VOICE_CALL_EVENT;
+    default:
+      return 255;
+   }
+}
+
+static RV_t ctrlGsmEventPost(gsmEvent_t ev);
+
 static RV_t ctrlGsmStateSend(void);
 static RV_t underVoltageProcess(void);
+static RV_t ctrlImuEnable(void);
+static RV_t ctrlImuEventAlarmProcess(void);
 
 RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 {
   static bool ctrlWaitForBalance = false;
-  dof_t dof;
 
   switch (ev)
   {
     case START_EVENT:
+    case VOICE_CALL_EVENT:
       LOG_TRACE(CONTROL_CMP, "START event!");
 
       *state = ACTIVE_STATE;
 
       LOG_TRACE(CONTROL_CMP, "ACTIVE state!");
 
-      /* enable collection of statistics from gyro and accel */
-      if (RV_SUCCESS != imuSumAngleGet(&dof))
+      if (RV_SUCCESS != ctrlImuEnable())
       {
-        LOG_ERROR(CONTROL_CMP, "Could not get IMU angle value");
-        break;
-      }
-
-      LOG_TRACE(CONTROL_CMP, "x=%f y=%f", dof.x, dof.y);
-
-      if (RV_SUCCESS != imuThresholdSet(dof, gImuThresholdInDegrees))
-      {
-        LOG_ERROR(CONTROL_CMP, "Could not set IMU threshold value");
-        break;
-      }
-
-      if (RV_SUCCESS != imuEnable())
-      {
-        LOG_ERROR(CONTROL_CMP, "Could not enable IMU");
-        break;
-      }
-
-      if (RV_SUCCESS != gsmSmsSend("ARM\r\n"))
-      {
-        LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Failed to enable IMU");
       }
       break;
 
@@ -161,6 +161,7 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       break;
 
     case STOP_EVENT:
+    case VOICE_CALL_EVENT:
       LOG_TRACE(CONTROL_CMP, "STOP event!");
 
       *state = IDLE_STATE;
@@ -186,6 +187,9 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       {
         LOG_ERROR(CONTROL_CMP,"Sms msg send failed!");
       }
+
+      /* disable collection of statistics from gyro and accel */
+      imuDisable();
 
       break;
 
@@ -234,30 +238,22 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
   switch (ev)
   {
+    /* Start, Stop or Call event in ALARM mode stands for re-start */
     case START_EVENT:
-      LOG_TRACE(CONTROL_CMP, "START event!");
-      break;
-
     case STOP_EVENT:
-      LOG_TRACE(CONTROL_CMP, "STOP event!");
+    case VOICE_CALL_EVENT:
+      *state = ACTIVE_STATE;
 
-      *state = IDLE_STATE;
+      LOG_TRACE(CONTROL_CMP, "ACTIVE state!");
 
-      LOG_TRACE(CONTROL_CMP, "IDLE state!");
-
-      /* disable collection of statistics from gyro and accel */
-      imuDisable();
-
-      if (RV_SUCCESS != gsmSmsSend("DISARM\r\n"))
+      if (RV_SUCCESS != ctrlImuEnable())
       {
-        LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Failed to enable IMU");
       }
 
       break;
 
     case ALARM_EVENT:
-      //LOG_TRACE(CONTROL_CMP, "ALARM event!");
-
       break;
 
     case STATE_EVENT:
@@ -277,7 +273,7 @@ RV_t doStateAlarm(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
       {
         if (RV_SUCCESS != ctrlGsmStateSend())
         {
-          LOG_ERROR(CONTROL_CMP, "Could not get gTrack state");
+          LOG_ERROR(CONTROL_CMP, "Could not get device state");
         }
 
         ctrlWaitForBalance = false;
@@ -309,35 +305,14 @@ RV_t doStateTest(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
   return RV_SUCCESS;
 }
 
-/* TODO: make MT safe */
-uint32_t timeElapsedGet(void)
+static RV_t ctrlGsmEventPost(gsmEvent_t ev)
 {
-  RTCDateTime timp;
-  static uint32_t timestamp_g = 0;
-
-  rtcGetTime(&RTCD1, &timp);
-
-  if (timestamp_g == 0)
-  {
-    timestamp_g = timp.millisecond;
-  }
-
-  return (timp.millisecond - timestamp_g) / 60000;
+  return ctrlEventPost(gsmToEventMapping(ev));
 }
 
-static RV_t ctrlGsmEventUpProcess(void)
+static RV_t ctrlImuEventAlarmProcess(void)
 {
-  return ctrlEventPost(START_EVENT);
-}
-
-static RV_t ctrlGsmEventDownProcess(void)
-{
-  return ctrlEventPost(STOP_EVENT);
-}
-
-static RV_t ctrlGsmEventBalanceProcess(void)
-{
-  return ctrlEventPost(BALANCE_EVENT);
+  return ctrlEventPost(ALARM_EVENT);
 }
 
 RV_t ctrlGsmEventSmsStartProcess(void)
@@ -353,16 +328,6 @@ static RV_t ctrlGsmEventSmsStopProcess(void)
 static RV_t ctrlGsmEventSmsStateProcess(void)
 {
   return ctrlEventPost(STATE_EVENT);
-}
-
-static RV_t ctrlImuEventAlarmProcess(void)
-{
-  return ctrlEventPost(ALARM_EVENT);
-}
-
-static RV_t ctrlVoltageEventAlarmProcess(void)
-{
-  return ctrlEventPost(LOW_VOLTAGE_EVENT);
 }
 
 /* read GSM battery discharge, signal level, SIM card balance */
@@ -406,6 +371,40 @@ static RV_t ctrlGsmStateSend()
   return RV_SUCCESS;
 }
 
+static RV_t ctrlImuEnable(void)
+{
+  dof_t dof;
+
+  /* enable collection of statistics from gyro and accel */
+  if (RV_SUCCESS != imuSumAngleGet(&dof))
+  {
+    LOG_ERROR(CONTROL_CMP, "Could not get IMU angle value");
+    return RV_FAILURE;
+  }
+
+  LOG_TRACE(CONTROL_CMP, "x=%f y=%f", dof.x, dof.y);
+
+  if (RV_SUCCESS != imuThresholdSet(dof, gImuThresholdInDegrees))
+  {
+    LOG_ERROR(CONTROL_CMP, "Could not set IMU threshold value");
+    return RV_FAILURE;
+  }
+
+  if (RV_SUCCESS != imuEnable())
+  {
+    LOG_ERROR(CONTROL_CMP, "Could not enable IMU");
+    return RV_FAILURE;
+  }
+
+  if (RV_SUCCESS != gsmSmsSend("ARM\r\n"))
+  {
+    LOG_ERROR(CONTROL_CMP, "Sms msg send failed!");
+    return RV_FAILURE;
+  }
+
+  return RV_SUCCESS;
+}
+
 static RV_t underVoltageProcess(void)
 {
   LOG_TRACE(CONTROL_CMP, "Low battery voltage!");
@@ -432,19 +431,19 @@ void profileInit(void)
   cliCmdRegister("state", ctrlGsmEventSmsStateProcess);
   cliCmdRegister("log",   persistentLogProcess);
 
-  gsmRegisterEventCb(GSM_EVENT_UP, ctrlGsmEventUpProcess);
-  gsmRegisterEventCb(GSM_EVENT_DOWN, ctrlGsmEventDownProcess);
-  gsmRegisterEventCb(GSM_EVENT_SMS_START, ctrlGsmEventSmsStartProcess);
-  gsmRegisterEventCb(GSM_EVENT_SMS_STOP, ctrlGsmEventSmsStopProcess);
-  gsmRegisterEventCb(GSM_EVENT_SMS_STATE, ctrlGsmEventSmsStateProcess);
-  gsmRegisterEventCb(GSM_EVENT_BALANCE_SIGN_BATT, ctrlGsmEventBalanceProcess);
-  gsmRegisterEventCb(GSM_EVENT_POWER_LOW, ctrlVoltageEventAlarmProcess);
-  gsmRegisterEventCb(GSM_EVENT_VOICE_CALL, gsmVoiceCallHandle);
+  gsmRegisterEventCb(GSM_EVENT_UP, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_DOWN, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_SMS_START, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_SMS_STOP, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_SMS_STATE, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_BALANCE_SIGN_BATT, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_POWER_LOW, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_VOICE_CALL, ctrlGsmEventPost);
 
   imuRegisterEventCb(IMU_EVENT_ALARM, ctrlImuEventAlarmProcess);
 
   cnfgrRegister("Control",      ctrlAppInit);
-  cnfgrRegister("GSM",          gsmInit);
   cnfgrRegister("IMU",          accelGyroInit);
+  cnfgrRegister("GSM",          gsmInit);
   cnfgrRegister("BSP_INIT_FIN", bspInitComplete);
 }

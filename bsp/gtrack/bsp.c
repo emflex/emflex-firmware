@@ -207,7 +207,7 @@ static void bspGpt4InitialCb(GPTDriver *gptp)
   (void) gptp;
 
   palSetPad(GPIOC, 6);
-  for (uint32_t i = 0; i < 500; i++)
+  for (uint32_t i = 0; i < 5000; i++)
       ;
   palClearPad(GPIOC, 6);
 }

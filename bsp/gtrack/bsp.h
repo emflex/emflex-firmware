@@ -53,7 +53,7 @@ extern RV_t bspGsmReset(void);
 
 #define ACCEL_THREAD_STACK_SIZE   1024
 
-#define GSM_THREAD_STACK_SIZE     1400
+#define GSM_THREAD_STACK_SIZE     1800
 
 #define BSP_THREAD_STACK_SIZE     256
 

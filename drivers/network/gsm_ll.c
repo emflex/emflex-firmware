@@ -49,9 +49,6 @@ static bool gsmReady = false;
 static command_t cur_command = {0, true};
 static virtual_timer_t vt;
 static virtual_timer_t vtGsmStatus;
-
-static RV_t gsmLlStateAnalyze(const char *str, uint32_t len);
-static void gsmLlCmdDump(uint32_t bufLen, const char *buf);
 static uint8_t gGsmLastCmdResend = 0;
 static uint8_t gGsmStatusReqSend = 0;
 
@@ -67,7 +64,8 @@ static bool gsm_is_ready = FALSE;
 static MUTEX_DECL(gsm_gSDMutex);
 static CONDVAR_DECL(gsm_ready_cond_var);
 
-extern mutex_t gSDMutex;
+static RV_t gsmLlStateAnalyze(const char *str, uint32_t len);
+static void gsmLlCmdDump(uint32_t bufLen, const char *buf);
 
 static bool gsmReadyGet(void)
 {
@@ -320,18 +318,31 @@ void gsmModuleCfg(void)
   gsmLlCmdSend(GSM_REPORT_ERROR_CODE_VERBOSE_ENABLE);
   gsmLlCmdSend(GSM_LEGACY_SMS_CLEAR);
 
-  //gsmCmdSend(GSM_PHONEBOOK_READ_ALL);
-
   gsmLlCmdSend(GSM_SLEEP_MODE_DTR);
 }
 
-void gsmModulePhoneNumberAdd(char* number, char* name)
+RV_t gsmModulePhoneNumberAdd(const char *number, const char *name)
 {
-  char buf[100] = {0};
+  char buf[BUF_LEN_64] = {0};
+
+  if (!number || !name)
+  {
+    return RV_FAILURE;
+  }
 
   sprintf(buf, GSM_PHONEBOOK_WRITE_ENTRY, number, name);
 
-  gsmCmdSend(buf);
+  return gsmCmdSend(buf);
+}
+
+RV_t gsmModulePhoneNumberDelete(uint8_t id)
+{
+  char buf[BUF_LEN_32] = {0};
+
+  /* GSM module expects numeration starting from 1 */
+  sprintf(buf, GSM_PHONEBOOK_DELETE_ENTRY, (id+1));
+
+  return gsmCmdSend(buf);
 }
 
 /* handle asynchronous event about new SMS from GSM module */
@@ -444,15 +455,24 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
   {
     return gsmCallEventCb(GSM_EVENT_VOICE_CALL);
   }
-#if 0
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_PHONE_BOOK_READ_MATCH_STR))
   {
-    char number[MAX_BUF_LEN] = {};
+    char number[GSM_PHONE_NUMBER_LEN] = {0};
 
-    gsmPhoneNumberParse(buf, number);
-    gsmPhoneNumberAdd(number);
+    //gsmModulePhoneNumberDelete(1);
+
+    if (RV_SUCCESS != gsmPhoneNumberParse(buf, number))
+    {
+      LOG_TRACE(GSM_CMP, "Failed to parse sender number");
+      return RV_FAILURE;
+    }
+
+    if (RV_SUCCESS != gsmPhoneNumberAdd(number))
+    {
+      LOG_TRACE(GSM_CMP, "Failed to add number to internal phonebook");
+      return RV_FAILURE;
+    }
   }
-#endif
   else if (0 == strncmp(buf, GSM_NEW_MSG_EVENT, sizeof(GSM_NEW_MSG_EVENT)-1))
   {
     if (RV_SUCCESS != gsmModuleAsyncEventHandle(buf))
@@ -475,8 +495,8 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
     }
     else if (!strcmp(buf, "ERROR"))
     {
-      /* Blink LED once per 3 seconds. Specifies any error */
-      bspIndicateError(3000);
+      /* Blink status LED with 500 msec interval */
+      bspIndicateError(500);
 
       /* allow next command to be dispatched to GSM module */
       cur_command.ack = true;
@@ -493,21 +513,21 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
       sMatch = strchr(buf, ':');
       sMatch++;
 
-      /* normally 'PS busy' is received when SIM balance is zero.
-         Start blinking LED 4 times per second to notify user */
+      /* normally 'PS busy' is received when SIM balance is zero */
       if (strncmp(sMatch, "PS busy", sizeof("PS busy")))
       {         
-         bspIndicateError(250);
-      }
-      /* Start blinking once per second */
+        /* Blink status LED with 500 msec interval */
+        bspIndicateError(500);
+      }      
       else if (strncmp(sMatch, "operation not allowed", sizeof("operation not allowed")))
       {
-         bspIndicateError(1000);
+        /* Blink status LED with 500 msec interval */
+        bspIndicateError(500);
       }
-      /* Blink LED once per 3 seconds. Specifies any other error */
       else
       {
-         bspIndicateError(3000);
+        /* Blink status LED with 500 msec interval */
+        bspIndicateError(500);
       }
 
       /* allow next command to be dispatched to GSM module */
@@ -818,8 +838,6 @@ static THD_FUNCTION(gsmTask, arg)
 
 RV_t gsmTaskInit(void)
 {
-  char number[] = "+380982297151";
-
   /* create message queue to send asynchronous requests */
   chMBObjectInit(&gsm_tx_mb_s, gsm_tx_msg_queue_s, MAILBOX_QUEUE_TX_SIZE);
 
@@ -831,14 +849,6 @@ RV_t gsmTaskInit(void)
 
   /* Create thread */
   chThdCreateStatic(gsmThread, sizeof(gsmThread), NORMALPRIO+1, gsmTask, 0);
-
-  memset(&phoneBook_g, 0, sizeof(phoneBook_g));
-
-  phoneBook_g.resp_is_set = TRUE;
-  strncpy(phoneBook_g.resp_number, number, sizeof(phoneBook_g.resp_number));
-
-  /* add predefined phone number to allow out-of-box configuration */
-  gsmPhoneNumberAdd(number);
 
   return RV_SUCCESS;
 }
@@ -882,7 +892,7 @@ RV_t gsmCallEventCb(gsmEvent_t event)
 {
   if ((event > GSM_EVENT_UNKNOWN) && (event < GSM_EVENT_LAST))
   {
-      return gsmCbArray_g[event]();
+    return gsmCbArray_g[event](event);
   }
 
   LOG_ERROR(GSM_CMP, "Failed to execute GSM callback");
@@ -918,16 +928,24 @@ RV_t gsmModuleInit()
 
   gsmReadySet();
 
+  /* fetch management numbers from SIM card */
+  gsmLlCmdSend(GSM_PHONEBOOK_READ_ALL);
+
   LOG_TRACE(GSM_CMP, "GSM module configured successfully");
 
   return RV_SUCCESS;
 }
 
-RV_t gsmPhoneNumberParse(const char* buf, char* number)
+RV_t gsmPhoneNumberParse(const char *buf, char *number)
 {
-  char* pMatchStart = NULL;
-  char* pMatchEnd   = NULL;
-  int   length      = 0;
+  char *pMatchStart = 0;
+  char *pMatchEnd   = 0;
+  int  length       = 0;
+
+  if (!buf || !number)
+  {
+    return RV_FAILURE;
+  }
 
   pMatchStart = strchr(buf, '"');
   pMatchStart++;
@@ -936,11 +954,23 @@ RV_t gsmPhoneNumberParse(const char* buf, char* number)
 
   memcpy(number, pMatchStart, length);
 
+  number[length] = '\0';
+
   return RV_SUCCESS;
 }
 
-RV_t gsmPhoneNumberAdd(const char* number)
+static uint8_t gsmPhoneBookSize(void)
 {
+  return (phoneBook_g.size == 0) ? 0 : 1;
+}
+
+RV_t gsmPhoneNumberAdd(const char *number)
+{
+  if (!number)
+  {
+    return RV_FAILURE;
+  }
+
   strncpy(phoneBook_g.data[phoneBook_g.size].number, number, GSM_PHONE_NUMBER_LEN);
 
   phoneBook_g.size++;
@@ -948,19 +978,44 @@ RV_t gsmPhoneNumberAdd(const char* number)
   return RV_SUCCESS;
 }
 
-RV_t gsmPhoneNumberFind(const char* number)
+RV_t gsmPhoneNumberDelete(uint8_t id)
+{
+  if (id < GSM_PHONE_BOOK_SIZE)
+  {
+    phoneBook_g.data[id].number[0] = 0;
+    phoneBook_g.data[id].name[0] = 0;
+
+    return RV_SUCCESS;
+  }
+  else
+  {
+    return RV_FAILURE;
+  }
+}
+
+RV_t gsmPhoneNumberFind(const char *number, uint8_t *id)
 {
   uint32_t i = 0;
 
+  if (!number || !id)
+  {
+    return RV_FAILURE;
+  }
+
+  LOG_TRACE(GSM_CMP, "Number:%s, size %u",number, phoneBook_g.size);
+
   for (i = 0; i < GSM_PHONE_BOOK_SIZE; i++)
   {
+    LOG_TRACE(GSM_CMP, "Number:%s number2:%s %u", phoneBook_g.data[i].number, number, i);
     if (0 == strncmp(phoneBook_g.data[i].number, number, GSM_PHONE_NUMBER_LEN))
     {
+      *id = i;
+
       return RV_SUCCESS;
     }
   }
 
-  LOG_ERROR(GSM_CMP, "Phone number is not found");
+  LOG_TRACE(GSM_CMP, "Phone number is not found");
 
   return RV_FAILURE;
 }
@@ -981,19 +1036,33 @@ RV_t gsmPhoneNumberFind(const char* number)
 RV_t gsmTaskCb(const char *in)
 {
   char senderTelNum[GSM_PHONE_NUMBER_LEN] = {0};
+  uint8_t id = 0;
 
   /* First of all extract tel number and ensure that we trust this sender */
-  gsmPhoneNumberParse(in, senderTelNum);
-
-  if (gsmPhoneNumberFind(senderTelNum) != RV_SUCCESS)
+  if (RV_SUCCESS != gsmPhoneNumberParse(in, senderTelNum))
   {
-    LOG_ERROR(GSM_CMP, "Unauthorized user access!");
+    LOG_ERROR(GSM_CMP, "Failed to get sender phone number!");
     return RV_FAILURE;
   }
 
-  //phoneBook_g.resp_is_set = TRUE;
-
-  //strncpy(phoneBook_g.resp_number, senderTelNum, sizeof(senderTelNum));
+  if (RV_SUCCESS != gsmPhoneNumberFind(senderTelNum, &id))
+  {
+    /* this is first time when management number is added */
+    if ((0 == gsmPhoneBookSize()) &&
+        (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD)))
+    {
+      if ((RV_SUCCESS == gsmPhoneNumberAdd(senderTelNum)) &&
+          (RV_SUCCESS == gsmModulePhoneNumberAdd(senderTelNum, "admin")))
+      {
+        return RV_SUCCESS;
+      }
+    }
+    else
+    {
+      LOG_ERROR(GSM_CMP, "Unauthorized user access!");
+      return RV_FAILURE;
+    }
+  }
 
   if (RV_SUCCESS == gsmCmpCommand(in, START_CMD))
   {
@@ -1008,6 +1077,41 @@ RV_t gsmTaskCb(const char *in)
   if (RV_SUCCESS == gsmCmpCommand(in, STATE_CMD))
   {
     return gsmCallEventCb(GSM_EVENT_SMS_STATE);
+  }
+
+  if (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD))
+  {
+    const char *pNewNumber = strstr(strstr(in, ADD_CMD), GSM_PHONE_NUMBER_START);
+
+    if (pNewNumber != 0)
+    {
+      memcpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
+
+      if ((RV_SUCCESS == gsmPhoneNumberAdd(senderTelNum)) &&
+          (RV_SUCCESS == gsmModulePhoneNumberAdd(senderTelNum, "admin")))
+      {
+        return RV_SUCCESS;
+      }
+    }
+  }
+
+  if (RV_SUCCESS == gsmCmpCommand(in, DELETE_CMD))
+  {
+    const char *pNewNumber = strstr(strstr(in, DELETE_CMD), GSM_PHONE_NUMBER_START);
+
+    if (pNewNumber != 0)
+    {
+      memcpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
+
+      if (RV_SUCCESS == gsmPhoneNumberFind(senderTelNum, &id))
+      {
+        if ((RV_SUCCESS == gsmPhoneNumberDelete(id)) &&
+            (RV_SUCCESS == gsmModulePhoneNumberDelete(id)))
+        {
+          return RV_SUCCESS;
+        }
+      }
+    }
   }
 
   LOG_ERROR(GSM_CMP, "Unsupported SMS command");
@@ -1069,7 +1173,6 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
 
   static uint8_t isGsmOk         = 0;
   static BOOL    isBatNotifSend  = RV_FALSE;
-  BOOL           isGsmError      = RV_FALSE;
 
   if (buf == 0)
   {
@@ -1094,7 +1197,8 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
 
           if (balance_s.balance < 1.0)
           {
-            isGsmError = RV_TRUE;
+            /* Blink status LED with 2 sec interval */
+            bspIndicateError(2000);
           }
           else
           {
@@ -1141,7 +1245,8 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
       /* send notification about low battery */
       if (battery < 10)
       {
-        isGsmError = RV_TRUE;
+        /* Does not change status LED state.
+           User will be notified via SMS */
 
         if (isBatNotifSend == RV_FALSE)
         {
@@ -1176,17 +1281,13 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
          Blink LED once per second */
       if (signal <= 1)
       {
-        isGsmError = RV_TRUE;
+        /* Blink status LED with 500 msec interval */
+        bspIndicateError(500);
       }
       else
       {
         isGsmOk++;
       }
-  }
-
-  if (isGsmError == RV_TRUE)
-  {
-    bspIndicateError(1000);
   }
 
   return RV_SUCCESS;

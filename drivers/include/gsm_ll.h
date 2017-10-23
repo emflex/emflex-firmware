@@ -78,6 +78,7 @@
 #define GSM_PHONEBOOK_WRITE_TEST "AT+CPBW=?\r"
 #define GSM_PHONEBOOK_WRITE_ENTRY "AT+CPBW=,\"%s\",129,\"%s\"\r"
 #define GSM_PHONEBOOK_READ_ENTRY "AT+CPBR=1\r"
+#define GSM_PHONEBOOK_DELETE_ENTRY "AT+CPBW=%u\r"
 
 #define GSM_SYNCHR_BAUD_RATE "AT\r"
 #define GSM_CHECK_GSM_STATE "AT+CPIN?\r"
@@ -121,15 +122,19 @@
 #define GSM_NETWORK_STATUS_STR           "+CREG"
 #define GSM_NETWORK_MATCH_TYPE           "+CREG: "
 
+#define GSM_PHONE_NUMBER_START           "+380"
+
 RV_t gsmTaskCb(const char *in);
 RV_t gsmPhoneNumberParse(const char* buf, char* number);
 RV_t gsmPhoneNumberAdd(const char* number);
 void gsmModuleConnectGprs(void);
 void gsmModuleSendGetHttpRequest(uint8_t signal, uint8_t battery);
 
-#define START_CMD "start"
-#define STOP_CMD  "stop"
-#define STATE_CMD "state"
+#define START_CMD  "start"
+#define STOP_CMD   "stop"
+#define STATE_CMD  "state"
 #define REBOOT_CMD "reboot"
+#define ADD_CMD    "add"
+#define DELETE_CMD "delete"
 
 #endif

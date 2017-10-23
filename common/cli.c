@@ -29,8 +29,6 @@ static cliEntry_t cliCmdsList[CLI_CMD_MAX_NUMBER];
 
 static THD_WORKING_AREA(cliThread, CLI_THREAD_STACK_SIZE);
 
-extern mutex_t gSDMutex;
-
 static RV_t cliEchoReturn(char *buf, uint32_t len)
 {
   uint32_t i = 0;

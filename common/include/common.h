@@ -57,6 +57,7 @@ typedef enum
 
 #define MAX_BUF_LEN             128
 #define BUF_LEN_64              64
+#define BUF_LEN_32              32
 
 uint32_t timeElapsedGet(void);
 

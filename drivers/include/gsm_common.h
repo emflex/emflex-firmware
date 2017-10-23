@@ -49,7 +49,7 @@ typedef enum
   GSM_EVENT_LAST
 } gsmEvent_t;
 
-typedef RV_t (*gsmCbFunc_t)(void);
+typedef RV_t (*gsmCbFunc_t)(gsmEvent_t);
 
 #endif /* GSM_COMMON */
 
