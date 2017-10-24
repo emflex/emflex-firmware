@@ -38,6 +38,8 @@
 #include "bsp.h"
 #include "serial_port.h"
 
+//#define GSM_MSG_DUMP
+
 gsmCbFunc_t gsmCbArray_g[GSM_EVENT_LAST];
 phoneBook_t phoneBook_g;
 
@@ -65,7 +67,10 @@ static MUTEX_DECL(gsm_gSDMutex);
 static CONDVAR_DECL(gsm_ready_cond_var);
 
 static RV_t gsmLlStateAnalyze(const char *str, uint32_t len);
+
+#ifdef GSM_MSG_DUMP
 static void gsmLlCmdDump(uint32_t bufLen, const char *buf);
+#endif
 
 static bool gsmReadyGet(void)
 {
@@ -459,8 +464,6 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
   {
     char number[GSM_PHONE_NUMBER_LEN] = {0};
 
-    //gsmModulePhoneNumberDelete(1);
-
     if (RV_SUCCESS != gsmPhoneNumberParse(buf, number))
     {
       LOG_TRACE(GSM_CMP, "Failed to parse sender number");
@@ -817,7 +820,9 @@ static THD_FUNCTION(gsmTask, arg)
     {
       LOG_TRACE(GSM_CMP, "GSM returned %u bytes", gsmInByteNum);
 
-      //gsmLlCmdDump(gsmInByteNum, buf);
+#ifdef GSM_MSG_DUMP
+      gsmLlCmdDump(gsmInByteNum, buf);
+#endif
 
       rv = gsmModuleCmdParse(buf, gsmInByteNum);
       if (rv == RV_FAILURE)
@@ -1047,14 +1052,15 @@ RV_t gsmTaskCb(const char *in)
 
   if (RV_SUCCESS != gsmPhoneNumberFind(senderTelNum, &id))
   {
-    /* this is first time when management number is added */
+    /* this is the first time when management number is added */
     if ((0 == gsmPhoneBookSize()) &&
         (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD)))
     {
-      if ((RV_SUCCESS == gsmPhoneNumberAdd(senderTelNum)) &&
-          (RV_SUCCESS == gsmModulePhoneNumberAdd(senderTelNum, "admin")))
+      if ((RV_SUCCESS != gsmPhoneNumberAdd(senderTelNum)) ||
+          (RV_SUCCESS != gsmModulePhoneNumberAdd(senderTelNum, "admin")))
       {
-        return RV_SUCCESS;
+        LOG_ERROR(GSM_CMP, "Failed to add management phone number!");
+        return RV_FAILURE;
       }
     }
     else
@@ -1085,13 +1091,23 @@ RV_t gsmTaskCb(const char *in)
 
     if (pNewNumber != 0)
     {
-      memcpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
+      strncpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
 
-      if ((RV_SUCCESS == gsmPhoneNumberAdd(senderTelNum)) &&
-          (RV_SUCCESS == gsmModulePhoneNumberAdd(senderTelNum, "admin")))
+      if ((RV_SUCCESS != gsmPhoneNumberAdd(senderTelNum)) ||
+          (RV_SUCCESS != gsmModulePhoneNumberAdd(senderTelNum, "admin")))
+      {
+        LOG_ERROR(GSM_CMP, "Failed to add management phone number!");
+        return RV_FAILURE;
+      }
+      else
       {
         return RV_SUCCESS;
       }
+    }
+    else
+    {
+      LOG_ERROR(GSM_CMP, "ADD command does not contain phone number!");
+      return RV_FAILURE;
     }
   }
 
@@ -1101,16 +1117,24 @@ RV_t gsmTaskCb(const char *in)
 
     if (pNewNumber != 0)
     {
-      memcpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
+      strncpy(senderTelNum, pNewNumber, sizeof(senderTelNum));
 
-      if (RV_SUCCESS == gsmPhoneNumberFind(senderTelNum, &id))
+      if ((RV_SUCCESS != gsmPhoneNumberFind(senderTelNum, &id)) ||
+          (RV_SUCCESS != gsmPhoneNumberDelete(id)) ||
+          (RV_SUCCESS != gsmModulePhoneNumberDelete(id)))
       {
-        if ((RV_SUCCESS == gsmPhoneNumberDelete(id)) &&
-            (RV_SUCCESS == gsmModulePhoneNumberDelete(id)))
-        {
-          return RV_SUCCESS;
-        }
+        LOG_ERROR(GSM_CMP, "Failed to delete management phone number!");
+        return RV_FAILURE;
       }
+      else
+      {
+        return RV_SUCCESS;
+      }
+    }
+    else
+    {
+      LOG_ERROR(GSM_CMP, "DELETE command does not contain phone number!");
+      return RV_FAILURE;
     }
   }
 
@@ -1293,21 +1317,23 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
   return RV_SUCCESS;
 }
 
+#ifdef GSM_MSG_DUMP
 static void gsmLlCmdDump(uint32_t bufLen, const char *buf)
 {
-    if (!buf)
-    {
-        return;
-    }
+  if (!buf)
+  {
+      return;
+  }
 
-    chMtxLock(&gSDMutex);
-    chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "___________\r\n");
+  chMtxLock(&gSDMutex);
+  chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "___________\r\n");
 
-    for (uint32_t i = 0; i < bufLen; i++)
-    {
-       chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "%02x ", buf[i]);
-    }
+  for (uint32_t i = 0; i < bufLen; i++)
+  {
+     chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "%02x ", buf[i]);
+  }
 
-    chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "\r\n___________\r\n");
-    chMtxUnlock(&gSDMutex);
+  chprintf(((BaseSequentialStream *) &CLI_SERIAL_PORT), "\r\n___________\r\n");
+  chMtxUnlock(&gSDMutex);
 }
+#endif

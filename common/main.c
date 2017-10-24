@@ -1,7 +1,7 @@
 /**
 ******************************************************************************
 * File:         main.c
-* Description:  Entry point of GPS tracker.
+* Description:  Entry point of GSM motion detector
 *
 * Created on:   December 24, 2016
 * Author:       Denys Haryachyy
@@ -57,7 +57,8 @@ int main(void)
 
   if (RV_SUCCESS != cnfgrInvoke())
   {
-    /* need to handle this correctly */
+    /* let each profile decide how to handle error case */
+    profileCnfgrErrorHandle();
   }
 
   while (1)

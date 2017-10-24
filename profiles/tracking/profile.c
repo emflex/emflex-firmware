@@ -53,6 +53,12 @@ typedef enum
 
 const uint8_t gImuThresholdInDegrees = 1.0;
 
+static RV_t ctrlGsmEventPost(gsmEvent_t ev);
+static RV_t ctrlGsmStateSend(void);
+static RV_t underVoltageProcess(void);
+static RV_t ctrlImuEnable(void);
+static RV_t ctrlImuEventAlarmProcess(void);
+
 static track_sm_event_t gsmToEventMapping(gsmEvent_t gsmEvent)
 {
   switch (gsmEvent)
@@ -72,16 +78,9 @@ static track_sm_event_t gsmToEventMapping(gsmEvent_t gsmEvent)
     case GSM_EVENT_VOICE_CALL:
       return VOICE_CALL_EVENT;
     default:
-      return 255;
+      return -1;
    }
 }
-
-static RV_t ctrlGsmEventPost(gsmEvent_t ev);
-
-static RV_t ctrlGsmStateSend(void);
-static RV_t underVoltageProcess(void);
-static RV_t ctrlImuEnable(void);
-static RV_t ctrlImuEventAlarmProcess(void);
 
 RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 {
@@ -120,7 +119,6 @@ RV_t doStateIdle(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
       /* wait for balance event */
       ctrlWaitForBalance = true;
-
       break;
 
     case BALANCE_EVENT:
@@ -335,8 +333,8 @@ static RV_t ctrlGsmStateSend()
 {
   uint32_t signal = 0;
   uint32_t battery = 0;
-  char buf[96] = "Balance (UAH): ";
-  char temp[32] = {0};
+  char buf[BUF_LEN_64] = "Balance (UAH): ";
+  char temp[BUF_LEN_32] = {0};
 
   if (RV_SUCCESS == gsmStateReqGet(&signal, &battery, temp, sizeof(temp)))
   {
@@ -416,6 +414,15 @@ static RV_t underVoltageProcess(void)
   }
 
   return RV_SUCCESS;
+}
+
+void profileCnfgrErrorHandle(void)
+{
+  bspIndicateError(4000);
+
+  chThdSleep(30);
+
+  bspSystemPowerOff();
 }
 
 void profileInit(void)

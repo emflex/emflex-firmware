@@ -62,5 +62,6 @@ typedef enum
 uint32_t timeElapsedGet(void);
 
 void profileInit(void);
+void profileCnfgrErrorHandle(void);
 
 #endif
