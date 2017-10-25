@@ -29,6 +29,14 @@
 #include "serial_port.h"
 #include "logging.h"
 
+/*
+ * Watchdog deadline is set to 1.77sec (LSI=37000 / (16 * 0xFFF)).
+ */
+static const WDGConfig wdgcfg = {
+  STM32_IWDG_PR_16,
+  STM32_IWDG_RL(0xFFF)
+};
+
 int main(void)
 {
   /* System initializations.
@@ -61,8 +69,12 @@ int main(void)
     profileCnfgrErrorHandle();
   }
 
+  wdgStart(&WDGD1, &wdgcfg);
+
   while (1)
-   ;
+  {
+    wdgReset(&WDGD1);
+  }
 
   return 0;
 }

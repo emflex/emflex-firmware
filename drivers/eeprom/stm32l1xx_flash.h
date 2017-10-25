@@ -499,18 +499,6 @@ void FLASH_ClearFlag(uint32_t FLASH_FLAG);
 FLASH_Status FLASH_GetStatus(void);
 FLASH_Status FLASH_WaitForLastOperation(uint32_t Timeout);
 
-/** 
-  * @brief  FLASH memory functions that should be executed from internal SRAM.
-  *         These functions are defined inside the "stm32l1xx_flash_ramfunc.c"
-  *         file.
-  */ 
-__RAM_FUNC FLASH_RUNPowerDownCmd(FunctionalState NewState);
-__RAM_FUNC FLASH_EraseParallelPage(uint32_t Page_Address1, uint32_t Page_Address2);
-__RAM_FUNC FLASH_ProgramHalfPage(uint32_t Address, uint32_t* pBuffer);
-__RAM_FUNC FLASH_ProgramParallelHalfPage(uint32_t Address1, uint32_t* pBuffer1, uint32_t Address2, uint32_t* pBuffer2);
-__RAM_FUNC DATA_EEPROM_EraseDoubleWord(uint32_t Address);
-__RAM_FUNC DATA_EEPROM_ProgramDoubleWord(uint32_t Address, uint64_t Data);
- 
 #define assert_param(x)
  
 #ifdef __cplusplus

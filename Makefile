@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -Og -g -gdwarf-2 -fomit-frame-pointer -falign-functions=16 -lm -Dtimegm=mktime -std=c99
+  USE_OPT = -Og -g -gdwarf-2 -fomit-frame-pointer -falign-functions=16 -lm -Dtimegm=mktime -std=c99 -DSTM32L152xB
 endif
 
 # C specific options here (added to USE_OPT).

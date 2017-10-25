@@ -1,7 +1,7 @@
 [submodule "OS/Chibios"]
 	path = OS/Chibios
 	url = https://github.com/ChibiOS/ChibiOS.git
-	branch = stable_3.0.x
+	branch = stable_16.1.x
 [submodule "libraries/minmea"]
 	path = libraries/minmea
 	url = https://github.com/cloudyourcar/minmea.git
