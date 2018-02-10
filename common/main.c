@@ -39,6 +39,8 @@ static const WDGConfig wdgcfg = {
 
 int main(void)
 {
+   uint32_t resetReason = RCC->CSR;
+
   /* System initializations.
    * - HAL initialization, this also initializes the configured device drivers
    *   and performs the board-specific initializations.
@@ -52,6 +54,8 @@ int main(void)
 
   /* platform specific initialization code */
   bspInit();
+
+  LOG_TRACE(0, "Reset register value: %u", resetReason);
 
   /* component initialization */
   cnfgrInit();
