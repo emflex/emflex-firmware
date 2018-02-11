@@ -220,10 +220,10 @@ static const GPTConfig bspGpt4InitialCfg = {
   0
 };
 
-static RV_t bspStartTimer5Sec(void)
+static RV_t bspStartTimer3Sec(void)
 {
   gptStart(&GPTD4, &bspGpt4InitialCfg);
-  gptStartContinuous(&GPTD4, 5000);
+  gptStartContinuous(&GPTD4, 3000);
 
   return RV_SUCCESS;
 }
@@ -237,7 +237,7 @@ RV_t bspInitComplete(void)
     extChannelEnable(&EXTD1, BSP_PWR_OFF_CHANNEL);
 
     /* Display normal device activity */
-    bspStartTimer5Sec();
+    bspStartTimer3Sec();
 
     return RV_SUCCESS;
 }
@@ -256,7 +256,7 @@ RV_t bspNormalActivity()
 {
   gptStopTimer(&GPTD4);
 
-  bspStartTimer5Sec();
+  bspStartTimer3Sec();
 
   return RV_SUCCESS;
 }

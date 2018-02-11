@@ -498,8 +498,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
     }
     else if (!strcmp(buf, "ERROR"))
     {
-      /* Blink status LED with 500 msec interval */
-      bspIndicateError(500);
+      bspIndicateError(300);
 
       /* allow next command to be dispatched to GSM module */
       cur_command.ack = true;
@@ -518,19 +517,16 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
 
       /* normally 'PS busy' is received when SIM balance is zero */
       if (strncmp(sMatch, "PS busy", sizeof("PS busy")))
-      {         
-        /* Blink status LED with 500 msec interval */
-        bspIndicateError(500);
+      {
+        bspIndicateError(1000);
       }      
       else if (strncmp(sMatch, "operation not allowed", sizeof("operation not allowed")))
       {
-        /* Blink status LED with 500 msec interval */
-        bspIndicateError(500);
+        bspIndicateError(300);
       }
       else
       {
-        /* Blink status LED with 500 msec interval */
-        bspIndicateError(500);
+        bspIndicateError(300);
       }
 
       /* allow next command to be dispatched to GSM module */
@@ -1221,8 +1217,8 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
 
           if (balance_s.balance < 1.0)
           {
-            /* Blink status LED with 2 sec interval */
-            bspIndicateError(2000);
+            /* Blink status LED with 1 sec interval */
+            bspIndicateError(1000);
           }
           else
           {
@@ -1233,8 +1229,6 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
       {
           balance_s.balance = 0.0;
           balance_s.state = false;
-
-          isGsmOk++;
       }
       else
       {
@@ -1269,8 +1263,8 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
       /* send notification about low battery */
       if (battery < 10)
       {
-        /* Does not change status LED state.
-           User will be notified via SMS */
+        /* Blink status LED with 2 sec interval */
+        bspIndicateError(2000);
 
         if (isBatNotifSend == RV_FALSE)
         {
@@ -1305,8 +1299,8 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
          Blink LED once per second */
       if (signal <= 1)
       {
-        /* Blink status LED with 500 msec interval */
-        bspIndicateError(500);
+        /* Blink status LED with 3000 msec interval */
+        bspIndicateError(3000);
       }
       else
       {
