@@ -26,6 +26,7 @@
 
 static uint32_t emptyElement = 0;
 static cliEntry_t cliCmdsList[CLI_CMD_MAX_NUMBER];
+static cliVarEntry_t cliVarCmd;
 
 static THD_WORKING_AREA(cliThread, CLI_THREAD_STACK_SIZE);
 
@@ -66,11 +67,18 @@ static RV_t cliCmdDispatch(const char *cmdBuf, uint32_t len)
     return RV_SUCCESS;
   }
 
-  for (i = 0; i < CLI_CMD_MAX_NUMBER; i++)
+  if (0 == strncmp(cmdBuf, cliVarCmd.cmd, strlen(cliVarCmd.cmd)))
   {
-    if (0 == strncmp(cmdBuf, cliCmdsList[i].cmd, len+1))
+    cliVarCmd.cb(cmdBuf);
+  }
+  else
+  {
+    for (i = 0; i < CLI_CMD_MAX_NUMBER; i++)
     {
-      return cliCmdsList[i].cb();
+      if (0 == strncmp(cmdBuf, cliCmdsList[i].cmd, len+1))
+      {
+        return cliCmdsList[i].cb();
+      }
     }
   }
 
@@ -190,6 +198,14 @@ RV_t cliCmdRegister(const char* cmd, cli_cb_t cb)
   cliCmdsList[emptyElement].cb = cb;
 
   emptyElement++;
+
+  return RV_SUCCESS;
+}
+
+RV_t cliVarCmdRegister(const char *cmd, cli_var_cb_t cb)
+{
+  cliVarCmd.cmd = cmd;
+  cliVarCmd.cb = cb;
 
   return RV_SUCCESS;
 }

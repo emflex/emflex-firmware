@@ -81,3 +81,8 @@ RV_t gsmStateReqSend(void)
 {
   return gsmLlDeviceStateGet();
 }
+
+RV_t gsmSend(const char *gsm_command)
+{
+  return gsmCmdSend(gsm_command);
+}

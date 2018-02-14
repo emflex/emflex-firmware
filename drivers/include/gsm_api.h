@@ -31,6 +31,7 @@ extern RV_t gsmRegisterEventCb(gsmEvent_t event, gsmCbFunc_t cb);
 extern RV_t gsmStateReqSend(void);
 extern RV_t gsmStateReqGet(uint32_t *sign, uint32_t *batt, char *bal, uint32_t len);
 extern void gsmModulePhoneNumberAdd(char* number, char* name);
+extern RV_t gsmSend(const char *gsm_command);
 
 #endif
 

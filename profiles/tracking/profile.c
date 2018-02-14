@@ -328,6 +328,18 @@ static RV_t ctrlGsmEventSmsStateProcess(void)
   return ctrlEventPost(STATE_EVENT);
 }
 
+static RV_t atCommandProcess(const char *cmd)
+{
+  char buf[BUF_LEN_32] = {0};
+
+  strncpy(buf, cmd, sizeof(buf));
+  strcat(buf, "\r");
+
+  gsmSend(buf);
+
+  return RV_SUCCESS;
+}
+
 /* read GSM battery discharge, signal level, SIM card balance */
 static RV_t ctrlGsmStateSend()
 {
@@ -437,6 +449,7 @@ void profileInit(void)
   cliCmdRegister("stop",  ctrlGsmEventSmsStopProcess);
   cliCmdRegister("state", ctrlGsmEventSmsStateProcess);
   cliCmdRegister("log",   persistentLogProcess);
+  cliVarCmdRegister("AT", atCommandProcess);
 
   gsmRegisterEventCb(GSM_EVENT_UP, ctrlGsmEventPost);
   gsmRegisterEventCb(GSM_EVENT_DOWN, ctrlGsmEventPost);

@@ -27,6 +27,7 @@
 #define CLI_SERIAL_SPEED 38400
 
 typedef RV_t (*cli_cb_t)(void);
+typedef RV_t (*cli_var_cb_t)(const char *);
 
 typedef struct cliEntry_s
 {
@@ -34,7 +35,14 @@ typedef struct cliEntry_s
   cli_cb_t cb;
 } cliEntry_t;
 
+typedef struct
+{
+  const char* cmd;
+  cli_var_cb_t cb;
+} cliVarEntry_t;
+
 RV_t cliInit(void);
 RV_t cliCmdRegister(const char* cmd, cli_cb_t cb);
+RV_t cliVarCmdRegister(const char* cmd, cli_var_cb_t cb);
 
 #endif
