@@ -72,7 +72,7 @@
 
 #define GSM_PHONEBOOK_CHECK "AT+CPBF=?\r"
 #define GSM_PHONEBOOK_RANGE_CHECK "AT+CPBR=?\r"
-#define GSM_PHONEBOOK_READ_ALL "AT+CPBR=1,250\r"
+#define GSM_PHONEBOOK_READ_ALL "AT+CPBR=1,4\r"
 #define GSM_PHONEBOOK_STORAGE_CHECK "AT+CPBS=?\r"
 #define GSM_PHONEBOOK_STORAGE_TEST "AT+CPBS?\r"
 #define GSM_PHONEBOOK_WRITE_TEST "AT+CPBW=?\r"
@@ -123,6 +123,7 @@
 #define GSM_NETWORK_MATCH_TYPE           "+CREG: "
 
 #define GSM_PHONE_NUMBER_START           "+380"
+#define GSM_KEY_PHONE_NUMBER             "+380000000000"
 
 RV_t gsmTaskCb(const char *in);
 RV_t gsmPhoneNumberParse(const char* buf, char* number);

@@ -54,6 +54,9 @@ static virtual_timer_t vtGsmStatus;
 static uint8_t gGsmLastCmdResend = 0;
 static uint8_t gGsmStatusReqSend = 0;
 
+static uint8_t simCardNew = 1;
+static uint8_t simCardNumbers = 0;
+
 static struct
 {
   bool state;
@@ -461,7 +464,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
     return gsmCallEventCb(GSM_EVENT_VOICE_CALL);
   }
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_PHONE_BOOK_READ_MATCH_STR))
-  {
+  {    
     char number[GSM_PHONE_NUMBER_LEN] = {0};
 
     if (RV_SUCCESS != gsmPhoneNumberParse(buf, number))
@@ -470,10 +473,19 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
       return RV_FAILURE;
     }
 
-    if (RV_SUCCESS != gsmPhoneNumberAdd(number))
+    simCardNumbers++;
+
+    if (0 == strncmp(number, GSM_KEY_PHONE_NUMBER, sizeof(GSM_KEY_PHONE_NUMBER)))
     {
-      LOG_TRACE(GSM_CMP, "Failed to add number to internal phonebook");
-      return RV_FAILURE;
+      simCardNew = 0;
+    }
+    else if (0 == strncmp(number, GSM_PHONE_NUMBER_START, sizeof(GSM_PHONE_NUMBER_START)-1))
+    {
+      if (RV_SUCCESS != gsmPhoneNumberAdd(number))
+      {
+        LOG_TRACE(GSM_CMP, "Failed to add number to internal phonebook");
+        return RV_FAILURE;
+      }
     }
   }
   else if (0 == strncmp(buf, GSM_NEW_MSG_EVENT, sizeof(GSM_NEW_MSG_EVENT)-1))
@@ -827,6 +839,22 @@ static THD_FUNCTION(gsmTask, arg)
       }
     }
 
+    if ((gGsmStatusReqSend == 1) && (simCardNew == 1))
+    {
+      LOG_TRACE(GSM_CMP, "New SIM card detected");
+
+      for (int i = 0; i < simCardNumbers; i++)
+      {
+        gsmModulePhoneNumberDelete(i);
+      }
+
+      gsmModulePhoneNumberAdd(GSM_KEY_PHONE_NUMBER, "key");
+
+      simCardNumbers = 0;
+
+      simCardNew = 0;
+    }
+
     /* query GSM module status (balance, battery, signal level) each 15 minutes */
     if (gGsmStatusReqSend == 15)
     {
@@ -1007,7 +1035,7 @@ RV_t gsmPhoneNumberFind(const char *number, uint8_t *id)
 
   for (i = 0; i < GSM_PHONE_BOOK_SIZE; i++)
   {
-    LOG_TRACE(GSM_CMP, "Number:%s number2:%s %u", phoneBook_g.data[i].number, number, i);
+    //LOG_TRACE(GSM_CMP, "Number:%s number2:%s %u", phoneBook_g.data[i].number, number, i);
     if (0 == strncmp(phoneBook_g.data[i].number, number, GSM_PHONE_NUMBER_LEN))
     {
       *id = i;
@@ -1052,12 +1080,16 @@ RV_t gsmTaskCb(const char *in)
     if ((0 == gsmPhoneBookSize()) &&
         (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD)))
     {
+      LOG_TRACE(GSM_CMP, "New number detected. Adding to phonebook");
+
       if ((RV_SUCCESS != gsmPhoneNumberAdd(senderTelNum)) ||
           (RV_SUCCESS != gsmModulePhoneNumberAdd(senderTelNum, "admin")))
       {
         LOG_ERROR(GSM_CMP, "Failed to add management phone number!");
         return RV_FAILURE;
       }
+
+      return RV_SUCCESS;
     }
     else
     {
