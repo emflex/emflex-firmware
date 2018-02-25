@@ -26,7 +26,7 @@
 
 extern RV_t gsmInit(void);
 extern RV_t gsmSmsSend(const char *smsStr);
-extern RV_t gsmCall(char *telNum);
+extern RV_t gsmCall(void);
 extern RV_t gsmRegisterEventCb(gsmEvent_t event, gsmCbFunc_t cb);
 extern RV_t gsmStateReqSend(void);
 extern RV_t gsmStateReqGet(uint32_t *sign, uint32_t *batt, char *bal, uint32_t len);

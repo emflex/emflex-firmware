@@ -181,9 +181,9 @@ RV_t doStateActive(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
 
       *state = ALARM_STATE;
 
-      if (RV_SUCCESS != gsmSmsSend("ALARM\r\n"))
+      if (RV_SUCCESS != gsmCall())
       {
-        LOG_ERROR(CONTROL_CMP,"Sms msg send failed!");
+        LOG_ERROR(CONTROL_CMP, "Failed to notify about alarm condition!");
       }
 
       /* disable collection of statistics from gyro and accel */

@@ -57,9 +57,15 @@ RV_t gsmSmsSend(const char* smsStr)
 }
 
 /* Call a number */
-RV_t gsmCall(const char *telNum)
+RV_t gsmCall(void)
 {
-  (void) telNum;
+  char buf[BUF_LEN_32] = {0};
+
+  strcpy(buf, "ATD");
+  strcat(buf, phoneBook_g.data[0].number);
+  strcat(buf, ";\r");
+
+  gsmCmdSend(buf);
 
   return RV_SUCCESS;
 }
