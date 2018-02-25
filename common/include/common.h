@@ -56,6 +56,7 @@ typedef enum
 
 
 #define MAX_BUF_LEN             128
+#define BUF_LEN_96              96
 #define BUF_LEN_64              64
 #define BUF_LEN_32              32
 

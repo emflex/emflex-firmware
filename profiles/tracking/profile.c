@@ -345,7 +345,7 @@ static RV_t ctrlGsmStateSend()
 {
   uint32_t signal = 0;
   uint32_t battery = 0;
-  char buf[BUF_LEN_64] = "Balance (UAH): ";
+  char buf[BUF_LEN_96] = "Balance (UAH): ";
   char temp[BUF_LEN_32] = {0};
 
   if (RV_SUCCESS == gsmStateReqGet(&signal, &battery, temp, sizeof(temp)))

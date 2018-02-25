@@ -141,11 +141,14 @@ THD_FUNCTION(buttonTask, arg)
       /* pull down PWRKEY pin in GSM module */
       palSetPad(GPIOC, BSP_GSM_PWR_PIN);
 
-      /* wait at least 1 sec */
-      chThdSleepSeconds(1);
+      /* wait at least 1.5 sec */
+      chThdSleepMilliseconds(1500);
 
       /* release PWRKEY (automatically raises HIGH) */
       palClearPad(GPIOC, BSP_GSM_PWR_PIN);
+
+      /* wait 1 sec */
+      chThdSleepSeconds(1);
 
       /* switch off device */
       bspSystemPowerOff();

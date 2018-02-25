@@ -1241,9 +1241,11 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
       char* pMatch = strstr(buf, GSM_BALANCE_MATCH_TYPE);
       uint32_t ret_type = atoi(pMatch + strlen(GSM_BALANCE_MATCH_TYPE));
 
-      if ((ret_type == 1) || (ret_type == 0))
+      if ((ret_type == 2) || (ret_type == 1) || (ret_type == 0))
       {
-          pMatch = strstr(buf, GSM_BALANCE_MATCH_STR);
+        pMatch = strstr(buf, GSM_BALANCE_MATCH_STR);
+        if (0 != pMatch)
+        {
           balance_s.balance = atof(pMatch + strlen(GSM_BALANCE_MATCH_STR));
           balance_s.state = true;
 
@@ -1256,15 +1258,12 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
           {
             isGsmOk++;
           }
-      }
-      else if ((ret_type == 2) || (ret_type == 4))
-      {
-          balance_s.balance = 0.0;
-          balance_s.state = false;
+        }
       }
       else
       {
-          LOG_ERROR(GSM_CMP, "GSM returned unexpected balance type - %u", ret_type);
+        balance_s.balance = 0.0;
+        balance_s.state = false;
       }
 
       LOG_TRACE(GSM_CMP, "Balance = %f", balance_s.balance);
