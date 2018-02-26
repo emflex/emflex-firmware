@@ -461,7 +461,7 @@ static RV_t gsmModuleCmdAnalyze(char *buf, uint32_t len)
   /* New voice call */
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_NO_CARRIER))
   {
-    return gsmCallEventCb(GSM_EVENT_VOICE_CALL);
+    return gsmCallEventCb(GSM_EVENT_VOICE_CALL, 0);
   }
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_PHONE_BOOK_READ_MATCH_STR))
   {    
@@ -917,11 +917,11 @@ RV_t gsmSendSmsToNumber(const char *telNum, const char *text)
 }
 
 /* Call a callback */
-RV_t gsmCallEventCb(gsmEvent_t event)
+RV_t gsmCallEventCb(gsmEvent_t event, uint8_t param)
 {
   if ((event > GSM_EVENT_UNKNOWN) && (event < GSM_EVENT_LAST))
   {
-    return gsmCbArray_g[event](event);
+    return gsmCbArray_g[event](event, param);
   }
 
   LOG_ERROR(GSM_CMP, "Failed to execute GSM callback");
@@ -1100,20 +1100,17 @@ RV_t gsmTaskCb(const char *in)
 
   if (RV_SUCCESS == gsmCmpCommand(in, START_CMD))
   {
-    return gsmCallEventCb(GSM_EVENT_SMS_START);
+    return gsmCallEventCb(GSM_EVENT_SMS_START, 0);
   }
-
-  if (RV_SUCCESS == gsmCmpCommand(in, STOP_CMD))
+  else if (RV_SUCCESS == gsmCmpCommand(in, STOP_CMD))
   {
-    return gsmCallEventCb(GSM_EVENT_SMS_STOP);
+    return gsmCallEventCb(GSM_EVENT_SMS_STOP, 0);
   }
-
-  if (RV_SUCCESS == gsmCmpCommand(in, STATE_CMD))
+  else if (RV_SUCCESS == gsmCmpCommand(in, STATE_CMD))
   {
-    return gsmCallEventCb(GSM_EVENT_SMS_STATE);
+    return gsmCallEventCb(GSM_EVENT_SMS_STATE, 0);
   }
-
-  if (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD))
+  else if (RV_SUCCESS == gsmCmpCommand(in, ADD_CMD))
   {
     const char *pNewNumber = strstr(strstr(in, ADD_CMD), GSM_PHONE_NUMBER_START);
 
@@ -1138,8 +1135,7 @@ RV_t gsmTaskCb(const char *in)
       return RV_FAILURE;
     }
   }
-
-  if (RV_SUCCESS == gsmCmpCommand(in, DELETE_CMD))
+  else if (RV_SUCCESS == gsmCmpCommand(in, DELETE_CMD))
   {
     const char *pNewNumber = strstr(strstr(in, DELETE_CMD), GSM_PHONE_NUMBER_START);
 
@@ -1164,6 +1160,15 @@ RV_t gsmTaskCb(const char *in)
       LOG_ERROR(GSM_CMP, "DELETE command does not contain phone number!");
       return RV_FAILURE;
     }
+  }  
+  else if (RV_SUCCESS == gsmCmpCommand(in, SENSIV_CMD))
+  {
+    const char *pSens = strchr(in, ' ') + 1;
+    uint8_t sensivity = 0;
+
+    sensivity = atoi(pSens);
+
+    return gsmCallEventCb(GSM_EVENT_SENSIV_SET, sensivity);
   }
 
   LOG_ERROR(GSM_CMP, "Unsupported SMS command");
@@ -1277,7 +1282,7 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
       /* flush status counter */
       isGsmOk = 0;
 
-      gsmCallEventCb(GSM_EVENT_BALANCE_SIGN_BATT);
+      gsmCallEventCb(GSM_EVENT_BALANCE_SIGN_BATT, 0);
   }
   else if (RV_SUCCESS == gsmCmpCommand(buf, GSM_BATTERY_CMD_RESPONCE))
   {
@@ -1299,7 +1304,7 @@ static RV_t gsmLlStateAnalyze(const char *buf, uint32_t len)
 
         if (isBatNotifSend == RV_FALSE)
         {
-          if (RV_SUCCESS != gsmCallEventCb(GSM_EVENT_POWER_LOW))
+          if (RV_SUCCESS != gsmCallEventCb(GSM_EVENT_POWER_LOW, 0))
           {
             LOG_ERROR(GSM_CMP, "Failed to send under-voltage event");
             return RV_FAILURE;

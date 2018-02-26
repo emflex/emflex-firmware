@@ -51,9 +51,9 @@ typedef enum
   LAST_STATE,
 } track_sm_state_t;
 
-const uint8_t gImuThresholdInDegrees = 1.0;
+float gImuThresholdInDegrees = 1.0;
 
-static RV_t ctrlGsmEventPost(gsmEvent_t ev);
+static RV_t ctrlGsmEventPost(gsmEvent_t ev, uint8_t param);
 static RV_t ctrlGsmStateSend(void);
 static RV_t underVoltageProcess(void);
 static RV_t ctrlImuEnable(void);
@@ -303,8 +303,10 @@ RV_t doStateTest(ctrl_sm_event_t ev, ctrl_sm_state_t* state)
   return RV_SUCCESS;
 }
 
-static RV_t ctrlGsmEventPost(gsmEvent_t ev)
+static RV_t ctrlGsmEventPost(gsmEvent_t ev, uint8_t param)
 {
+  (void) param;
+
   return ctrlEventPost(gsmToEventMapping(ev));
 }
 
@@ -336,6 +338,23 @@ static RV_t atCommandProcess(const char *cmd)
   strcat(buf, "\r");
 
   gsmSend(buf);
+
+  return RV_SUCCESS;
+}
+
+static RV_t sensivitySet(gsmEvent_t ev, uint8_t param)
+{
+  (void) ev;
+
+  if (param > 100)
+  {
+    LOG_ERROR(CONTROL_CMP, "Failed to set sensitivity threshold to %u", param);
+    return RV_FAILURE;
+  }
+
+  /* 0% - 1.00
+     100- 3.00 */
+  gImuThresholdInDegrees = ((2 * param) / 100) + 1.00;
 
   return RV_SUCCESS;
 }
@@ -459,6 +478,7 @@ void profileInit(void)
   gsmRegisterEventCb(GSM_EVENT_BALANCE_SIGN_BATT, ctrlGsmEventPost);
   gsmRegisterEventCb(GSM_EVENT_POWER_LOW, ctrlGsmEventPost);
   gsmRegisterEventCb(GSM_EVENT_VOICE_CALL, ctrlGsmEventPost);
+  gsmRegisterEventCb(GSM_EVENT_SENSIV_SET, sensivitySet);
 
   imuRegisterEventCb(IMU_EVENT_ALARM, ctrlImuEventAlarmProcess);
 

@@ -77,7 +77,7 @@ RV_t gsmSendSmsToNumber(const char *telNum, const char *text);
 RV_t gsmModuleBalanceGet(float *bal);
 void gsmModuleCheckState(void);
 void gsmModuleSpeed(void);
-RV_t gsmCallEventCb(gsmEvent_t event);
+RV_t gsmCallEventCb(gsmEvent_t event, uint8_t param);
 RV_t gsmCmpCommand(const char *inBuf, const char *cmpBuf);
 extern RV_t gsmCmdSend(const char *gsm_command);
 extern RV_t gsmLlDeviceStateGet(void);

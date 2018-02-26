@@ -46,10 +46,11 @@ typedef enum
   GSM_EVENT_POWER_LOW,
   GSM_EVENT_POWER_HIGH,
   GSM_EVENT_VOICE_CALL,
+  GSM_EVENT_SENSIV_SET,
   GSM_EVENT_LAST
 } gsmEvent_t;
 
-typedef RV_t (*gsmCbFunc_t)(gsmEvent_t);
+typedef RV_t (*gsmCbFunc_t)(gsmEvent_t, uint8_t);
 
 #endif /* GSM_COMMON */
 

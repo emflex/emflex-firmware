@@ -137,5 +137,6 @@ void gsmModuleSendGetHttpRequest(uint8_t signal, uint8_t battery);
 #define REBOOT_CMD "reboot"
 #define ADD_CMD    "add"
 #define DELETE_CMD "delete"
+#define SENSIV_CMD "sensivity"
 
 #endif
